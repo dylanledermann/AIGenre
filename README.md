@@ -13,8 +13,8 @@ This project uses CUDA 12.6 for GPU processing.
 If you have CUDA, but a different version, uninstall and reinstall the correct torch version from [here](https://pytorch.org/get-started/locally/).
 If you do not have CUDA and can not download it, run the following to change the torch and torchvision to cpu:
 ```bash
-pip uninstall torch torchvision
+pip uninstall torch torchvision torchaudio
 pip cache purge
-pip install torch torchvision
+pip install torch torchvision torchaudio
 ```
 You can check the result with the following command: `python -c "import torch; print(torch.__version__)"`, which should output `{torch_version}+cpu`
