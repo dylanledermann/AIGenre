@@ -23,6 +23,7 @@ You can check the result with the following command: `python -c "import torch; p
 This repository is split into different .ipynb files containing different models and custom datasets.
 
 ## Results
+The ResNet model was able to achieve over 70% with and without lyrics. Adding lyrics yielded an increase of 2% in the final accuracy. In the ResNet testing dataset, the most common error occurred through mixing up Easy-Listening and Pop genres, which both 
 | | Without Lyrics Accuracy | With Lyrics Accuracy |
 | --- | :---: | :---: |
 | ResNet 18 | 70.60% | 72.01% |
