@@ -1,6 +1,6 @@
 # AI Genre
 ## Introduction
-This repo tests song classifying by running spectrograms and lyrics through CNNs.
+This repo tests song classifying by running spectrograms and lyrics through CNNs using the [Kaggle FMA Dataset](https://www.kaggle.com/datasets/imsparsh/fma-free-music-archive-small-medium/data).
 
 ## Getting Started
 To start, create a python environment (I used conda) and install the required modules.
@@ -18,3 +18,11 @@ pip cache purge
 pip install torch torchvision torchaudio
 ```
 You can check the result with the following command: `python -c "import torch; print(torch.__version__)"`, which should output `{torch_version}+cpu`
+
+## Layout
+This repository is split into different .ipynb files containing different models and custom datasets.
+
+## Results
+| | Without Lyrics Accuracy | With Lyrics Accuracy |
+| --- | :---: | :---: |
+| ResNet 18 | 70.60% | 72.01% |
