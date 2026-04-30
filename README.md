@@ -26,5 +26,5 @@ This repository is split into different .ipynb files containing different models
 The ResNet model was able to achieve over 70% with and without lyrics. Adding lyrics yielded an increase of 2% in the final accuracy. In the ResNet testing dataset, the most common error occurred through mixing up Easy-Listening and Pop genres, which both 
 | Model | Without Lyrics Accuracy | Without Lyrics Loss | With Lyrics Accuracy | With Lyrics Loss
 | --- | :---: | :---: | :---: | :---: |
-| ResNet 18 | 70.60% | 1.0932 | 72.01% | 1.0167
+| ResNet 18 | 72.18% | 1.0223 | 72.01% | 1.0167
 | Generic Transformer | | | 70.60% | 1.0636
