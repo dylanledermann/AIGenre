@@ -27,4 +27,4 @@ The ResNet model was able to achieve over 70% with and without lyrics. Adding ly
 | Model | Without Lyrics Accuracy | Without Lyrics Loss | With Lyrics Accuracy | With Lyrics Loss
 | --- | :---: | :---: | :---: | :---: |
 | ResNet 18 | 72.18% | 1.0223 | 72.01% | 1.0167
-| Generic Transformer | | | 70.60% | 1.0636
+| Generic Transformer | 67.95% | 1.1174 | 70.60% | 1.0636
