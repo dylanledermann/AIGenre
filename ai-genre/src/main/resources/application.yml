@@ -1,0 +1,32 @@
+# Postgres DB
+spring:
+    application:
+        name: ai-genre
+    data:
+        redis:
+            cache-host: ${REDIS_CACHE_HOST}
+            broker-host: ${REDIS_BROKER_HOST}
+            host: ${REDIS_HOST}
+            port: ${REDIS_PORT}
+            password: ${REDIS_PASSWORD}
+    datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+
+        hikari:
+            maximum-pool-size: 10
+            minimum-idle: 5
+            connection-timeout: 30000
+            idle-timeout: 600000
+            max-lifetime: 1800000
+            initialization-fail-time: 10000
+    flyway:
+        locations: classpath:db/migration
+    websocket:
+        allowed-origins:
+            - localhost
+    jpa:
+        hibernate:
+            # Hibernate only validates the db format matches the java code (flyway creates the db)
+            ddl-auto: validate
