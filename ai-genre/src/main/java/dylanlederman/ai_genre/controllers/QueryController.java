@@ -46,8 +46,16 @@ public class QueryController {
         if (savedRes.isPresent()) {
             return ResponseEntity.ok(savedRes.get());
         }
+        
+        Map<String, String> metadata = Map.of(
+            "mimeType", file.getContentType(),
+            "fileName", file.getName(),
+            "fileSize", Long.toString(file.getSize())
+        );
 
-        queryService.saveFile(fileHash, fileBytes);
+        if (!queryService.saveFile(fileHash, fileBytes, metadata)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid file"));
+        }
         String jobId = UUID.randomUUID().toString();
 
         Map<String, String> task = Map.of(

@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.m;
 
 import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.ResultModel;
@@ -47,7 +48,10 @@ public class QueryRepo {
             VALUES(:fileHash, :fileBytes)        
         """;
 
-        namedJdbcTemplate.update(uploadInsertQuery, new BeanPropertySqlParameterSource(upload));
+        namedJdbcTemplate.update(uploadInsertQuery, Map.of(
+            "fileHash", upload.getFileHash(),
+            "fileMetaData", objectMapper.writeValueAsString(upload.getFileMetadata())
+        ));
         namedJdbcTemplate.update(fileInsertQuery, new BeanPropertySqlParameterSource(file));
     }
 

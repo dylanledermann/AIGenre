@@ -4,11 +4,12 @@ import java.security.MessageDigest;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.ResultModel;
+import dylanlederman.ai_genre.models.UploadModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.type.TypeReference;
@@ -67,7 +68,19 @@ public class QueryService {
         return Optional.empty();
     }
 
-    public void saveFile(String hash, byte[] mp3_bytes) {
-        
+    public boolean saveFile(String hash, byte[] mp3_bytes, Map<String, String> metadata) {
+        if (
+            !hash.matches("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$") ||
+            mp3_bytes.length == 0 ||
+            !metadata.getOrDefault("mimeType", "").matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")
+        ) {
+            return false;
+        }
+
+        UploadModel upload = new UploadModel(hash, metadata);
+        FileModel file = new FileModel(hash, mp3_bytes);
+
+        queryRepo.insertFile(upload, file);
+        return true;
     }
 }

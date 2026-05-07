@@ -4,11 +4,14 @@ spring:
         name: ai-genre
     data:
         redis:
-            cache-host: ${REDIS_CACHE_HOST}
-            broker-host: ${REDIS_BROKER_HOST}
-            host: ${REDIS_HOST}
-            port: ${REDIS_PORT}
-            password: ${REDIS_PASSWORD}
+            cache:
+                host: ${REDIS_CACHE_HOST}
+                port: ${REDIS_PORT}
+                database: 0
+            broker:
+                host: ${REDIS_BROKER_HOST}
+                port: ${REDIS_PORT}
+                database: 0
     datasource:
         url: ${DB_URL}
         username: ${DB_USERNAME}

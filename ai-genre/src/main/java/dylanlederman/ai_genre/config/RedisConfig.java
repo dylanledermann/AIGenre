@@ -16,20 +16,16 @@ import dylanlederman.ai_genre.services.CeleryResultSubscriber;
 
 @Configuration
 public class RedisConfig {
-    @Value("${spring.data.redis.cache-host")
-    private String cacheHost;
-    @Value("${spring.data.redis.broker-host")
-    private String brokerHost;
-    @Value("${spring.data.redis.port")
-    private int port;
 
-    @Bean("cacheRedisTemplate")
-    @Primary
-    public RedisTemplate<String, String> cacheRedisFactory() {
+    public RedisTemplate<String, String> createRedisTemplate(
+        String host,
+        int port,
+        int database
+    ) {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-        config.setHostName(cacheHost);
+        config.setHostName(host);
         config.setPort(port);
-        config.setDatabase(0);
+        config.setDatabase(database);
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config);
         factory.afterPropertiesSet();
@@ -40,22 +36,23 @@ public class RedisConfig {
         template.setValueSerializer(new StringRedisSerializer());
         return template;
     }
+    @Bean("cacheRedisTemplate")
+    @Primary
+    public RedisTemplate<String, String> cacheRedisFactory(
+        @Value("${spring.data.redis.cache.host}") String cacheHost,
+        @Value("${spring.data.redis.cache.port}") int port,
+        @Value("${spring.data.redis.cache.database}") int database
+    ) {
+        return createRedisTemplate(cacheHost, port, database);
+    }
 
     @Bean("brokerRedisTemplate")
-    public RedisTemplate<String, String> brokerRedisTemplate() {
-        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-        config.setHostName(brokerHost);
-        config.setPort(port);
-        config.setDatabase(1);
-
-        LettuceConnectionFactory factory = new LettuceConnectionFactory(config);
-        factory.afterPropertiesSet();
-
-        RedisTemplate<String, String> template = new RedisTemplate<>();
-        template.setConnectionFactory(factory);
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new StringRedisSerializer());
-        return template;
+    public RedisTemplate<String, String> brokerRedisTemplate(
+        @Value("${spring.data.redis.broker.host}") String brokerHost,
+        @Value("${spring.data.redis.broker.port}") int port,
+        @Value("${spring.data.redis.broker.database}") int database
+    ) {
+        return createRedisTemplate(brokerHost, port, database);
     }
 
     @Bean
