@@ -64,7 +64,7 @@ public class QueryService {
                 "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%"),
                 "error", queryVal.getResult().getOrDefault("error", "N/A")
             );
-            redisTemplate.opsForValue().setGet(hash, objectMapper.writeValueAsString(response), Duration.ofMillis(ttl));
+            redisTemplate.opsForValue().set(hash, objectMapper.writeValueAsString(response), Duration.ofMillis(ttl));
             return Optional.of(
                 response
             );
