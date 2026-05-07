@@ -53,13 +53,16 @@ public class QueryService {
         Optional<ResultModel> queryRes = queryRepo.getByFileHash(hash);
         if (queryRes.isPresent()) {
             ResultModel queryVal = queryRes.get();
+            Map<String, String> response = Map.of(
+                "task_id", queryVal.getTaskId().toString(),
+                "status", queryVal.getStatus(),
+                "genre", queryVal.getResult().getOrDefault("genre", "Unknown"),
+                "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%"),
+                "error", queryVal.getResult().getOrDefault("error", "N/A")
+            );
+            redisTemplate.opsForValue().append(hash, objectMapper.writeValueAsString(response));
             return Optional.of(
-                Map.of(
-                    "task_id", queryVal.getTaskId().toString(),
-                    "status", queryVal.getStatus(),
-                    "genre", queryVal.getResult().getOrDefault("genre", "Unknown"),
-                    "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%")
-                )
+                response
             );
         }
 

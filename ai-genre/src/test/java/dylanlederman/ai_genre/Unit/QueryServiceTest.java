@@ -97,7 +97,8 @@ public class QueryServiceTest {
                     "task_id", queryResult.getTaskId().toString(),
                     "status", queryResult.getStatus(),
                     "genre", queryResult.getResult().get("genre"),
-                    "accuracy", queryResult.getResult().get("accuracy")
+                    "accuracy", queryResult.getResult().get("accuracy"),
+                    "error", "N/A"
                 ).equals(res.get())
             );
         });
