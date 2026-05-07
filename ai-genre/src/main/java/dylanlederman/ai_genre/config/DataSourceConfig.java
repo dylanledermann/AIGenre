@@ -20,10 +20,8 @@ public class DataSourceConfig {
     private String datasourceUsername;
     @Value("${spring.datasource.password}")
     private String datasourcePassword;
-    @Value("${spring.datasource.driver}")
-    private String datasourceDriver;
 
-    @Value("${spring.datasource.flyway.location}")
+    @Value("${spring.flyway.location}")
     private String flywayLocation;
 
     @Bean

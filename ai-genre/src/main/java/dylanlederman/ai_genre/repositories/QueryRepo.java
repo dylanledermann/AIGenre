@@ -40,7 +40,7 @@ public class QueryRepo {
     public void insertFile(@Valid UploadModel upload, @Valid FileModel file) {
         String uploadInsertQuery = """
             INSERT INTO uploads (file_hash, file_metadata) 
-            VALUES(:fileHash, :fileMetadata)
+            VALUES(:fileHash, :fileMetadata::jsonb)
         """;
         String fileInsertQuery = """
             INSERT INTO files (file_hash, file_bytes)
@@ -49,7 +49,7 @@ public class QueryRepo {
 
         namedJdbcTemplate.update(uploadInsertQuery, Map.of(
             "fileHash", upload.getFileHash(),
-            "fileMetaData", objectMapper.writeValueAsString(upload.getFileMetadata())
+            "fileMetadata", objectMapper.writeValueAsString(upload.getFileMetadata())
         ));
         namedJdbcTemplate.update(fileInsertQuery, new BeanPropertySqlParameterSource(file));
     }

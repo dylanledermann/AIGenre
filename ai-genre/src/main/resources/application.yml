@@ -25,7 +25,7 @@ spring:
             max-lifetime: 1800000
             initialization-fail-time: 10000
     flyway:
-        locations: classpath:db/migration
+        location: classpath:db/migration
     websocket:
         allowed-origins:
             - localhost

@@ -14,7 +14,7 @@ CREATE TABLE audio_results (
     file_hash CHAR(64) REFERENCES uploads(file_hash),
     task_id CHAR(64) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
-        CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILURE'))
+        CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILURE')),
     result JSONB,
     window_start_sample INT,
     sample_rate INT,
