@@ -35,10 +35,8 @@ public class QueryService {
 
         StringBuilder hexString = new StringBuilder(64);
         for (byte b:encodedHash) {
-            String hex = Integer.toHexString(b);
-            if (hex.length() == 1) {
-                hexString.append('0');
-            }
+            String hex = Integer.toHexString(0xFF & b);
+            if (hex.length() == 1) hexString.append('0');
             hexString.append(hex);
         }
 
@@ -57,7 +55,7 @@ public class QueryService {
             ResultModel queryVal = queryRes.get();
             return Optional.of(
                 Map.of(
-                    "task_id", queryVal.getTaskId(),
+                    "task_id", queryVal.getTaskId().toString(),
                     "status", queryVal.getStatus(),
                     "genre", queryVal.getResult().getOrDefault("genre", "Unknown"),
                     "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%")

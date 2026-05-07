@@ -1,6 +1,7 @@
 package dylanlederman.ai_genre.models;
 
 import java.util.Map;
+import java.util.UUID;
 
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -16,8 +17,7 @@ public class AudioResultsModel {
     private String sampleHash;
     @Size(min=64, max=64)
     private String fileHash;
-    @Size(min=64, max=64)
-    private String taskId;
+    private UUID taskId;
     @Pattern(regexp="PENDING|PROCESSING|COMPLETE|FAILURE")
     private String status;
     private Map<String, String> result;

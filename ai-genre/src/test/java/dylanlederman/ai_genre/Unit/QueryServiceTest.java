@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,8 +28,7 @@ import tools.jackson.databind.ObjectMapper;
     QueryService.class
 })
 @ImportAutoConfiguration(classes={
-    ObjectMapper.class,
-    QueryService.class
+    ObjectMapper.class
 })
 public class QueryServiceTest {
     @MockitoBean
@@ -39,21 +39,24 @@ public class QueryServiceTest {
     private ValueOperations<String, String> valueOperations;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
     private QueryService queryService;
 
     @BeforeEach
     void setup() { 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        queryService = new QueryService(queryRepo, objectMapper, redisTemplate);
     }
 
     @Test
     void testHashFunc() {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaaa".getBytes();
+            System.out.println(tempBytes);
+            System.out.println(tempBytes.length);
             String hash = queryService.hashFile(tempBytes);
-            
-            assertTrue(hash.length() != 0);
+            System.out.println(hash);
+            assertTrue(hash.length() == 64);
+            assertTrue(hash.matches("^[0-9a-f]{64}$"));
         });
     }
 
@@ -80,8 +83,9 @@ public class QueryServiceTest {
                 "genre", "pop",
                 "accuracy", "50%"
             );
+            UUID taskId = UUID.randomUUID();
             ResultModel queryResult = ResultModel.builder()
-                .taskId(hash)
+                .taskId(taskId)
                 .status("COMPLETE")
                 .result(resultMap)
                 .build();
@@ -89,12 +93,14 @@ public class QueryServiceTest {
             when(queryRepo.getByFileHash(hash)).thenReturn(Optional.of(queryResult));
             Optional<Map<String, String>> res = queryService.checkHash(hash);
             assertFalse(res.isEmpty());
-            assertEquals(Map.of(
-                "task_id", hash,
-                "status", "COMPLETE",
-                "genre", "pop",
-                "accuracy", "50%"
-            ), res.get());
+            assertTrue(
+                Map.of(
+                    "task_id", queryResult.getTaskId().toString(),
+                    "status", queryResult.getStatus(),
+                    "genre", queryResult.getResult().get("genre"),
+                    "accuracy", queryResult.getResult().get("accuracy")
+                ).equals(res.get())
+            );
         });
     }
     

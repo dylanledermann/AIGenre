@@ -12,7 +12,7 @@ CREATE TABLE files (
 CREATE TABLE audio_results (
     sample_hash CHAR(64) PRIMARY KEY,
     file_hash CHAR(64) REFERENCES uploads(file_hash),
-    task_id CHAR(64) NOT NULL,
+    task_id UUID NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
         CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILURE')),
     result JSONB,

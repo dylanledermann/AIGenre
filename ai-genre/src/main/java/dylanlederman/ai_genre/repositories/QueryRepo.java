@@ -2,6 +2,7 @@ package dylanlederman.ai_genre.repositories;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
@@ -30,7 +31,7 @@ public class QueryRepo {
 
     private RowMapper<ResultModel> resultRowMapper() {
         return (rs, rowNum) -> ResultModel.builder()
-            .taskId(rs.getString("task_id"))
+            .taskId((UUID) rs.getObject("task_id"))
             .status(rs.getString("status"))
             .result(objectMapper.readValue(rs.getString("result"), new TypeReference<Map<String, String>>(){}))
             .build();

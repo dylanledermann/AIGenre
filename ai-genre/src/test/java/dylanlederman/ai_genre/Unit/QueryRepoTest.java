@@ -2,10 +2,11 @@ package dylanlederman.ai_genre.Unit;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Map;
 import java.util.Optional;
-
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
@@ -74,26 +75,30 @@ public class QueryRepoTest extends BaseTestContainers {
         String taskHash = "b".repeat(64);
         Map<String, String> result = Map.of("key", "value");
         String status = "PROCESSING";
+        UUID taskId = UUID.randomUUID();
 
         String insertTaskQuery = """
-            INSERT INTO audio_results (sample_hash, file_hash, task_id, status, result::jsonb)
-            VALUE (?, ?, ?, ?, ?)     
+            INSERT INTO audio_results (sample_hash, file_hash, task_id, status, result)
+            VALUES (?, ?, ?, ?, ?::jsonb)     
         """;
         jdbcTemplate.update(
             insertTaskQuery, 
             taskHash, 
             hash, 
-            taskHash, 
+            taskId, 
             status, 
-            objectMapper.writeValueAsString(insertTaskQuery)
+            objectMapper.writeValueAsString(result)
         );
 
         ResultModel correctResult = ResultModel.builder()
-            .taskId(taskHash)
+            .taskId(taskId)
             .status(status)
             .result(result)
             .build();
 
-        assertEquals(queryRepo.getByFileHash(hash), correctResult);
+        Optional<ResultModel> queryRes = queryRepo.getByFileHash(hash);
+
+        assertFalse(queryRes.isEmpty());
+        assertEquals(queryRes.get(), correctResult);
     }
 }
