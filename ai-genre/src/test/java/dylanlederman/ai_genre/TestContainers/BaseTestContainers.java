@@ -31,8 +31,10 @@ public abstract class BaseTestContainers {
 
         registry.add("spring.data.redis.cache.host", cacheRedis::getHost);
         registry.add("spring.data.redis.cache.port", () -> cacheRedis.getMappedPort(6379));
+        registry.add("spring.data.redis.cache.ttl", () -> 3600000);
 
         registry.add("spring.data.redis.broker.host", brokerRedis::getHost);
         registry.add("spring.data.redis.broker.port", () -> brokerRedis.getMappedPort(6379));
+        registry.add("spring.data.redis.broker.ttl", () -> 3600000);
     }
 }

@@ -1,9 +1,11 @@
 package dylanlederman.ai_genre.services;
 
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -21,11 +23,13 @@ public class QueryService {
     private QueryRepo queryRepo;
     private ObjectMapper objectMapper;
     private RedisTemplate<String, String> redisTemplate;
+    private long ttl;
 
-    public QueryService(QueryRepo queryRepo, ObjectMapper objectMapper, RedisTemplate<String, String> redisTemplate) {
+    public QueryService(QueryRepo queryRepo, ObjectMapper objectMapper, RedisTemplate<String, String> redisTemplate, @Value("${spring.data.redis.cache.ttl}") long ttl) {
         this.queryRepo = queryRepo;
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
+        this.ttl = ttl;
     }
 
     public String hashFile(byte[] mp3_bytes) throws Exception {
@@ -60,7 +64,7 @@ public class QueryService {
                 "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%"),
                 "error", queryVal.getResult().getOrDefault("error", "N/A")
             );
-            redisTemplate.opsForValue().append(hash, objectMapper.writeValueAsString(response));
+            redisTemplate.opsForValue().setGet(hash, objectMapper.writeValueAsString(response), Duration.ofMillis(ttl));
             return Optional.of(
                 response
             );

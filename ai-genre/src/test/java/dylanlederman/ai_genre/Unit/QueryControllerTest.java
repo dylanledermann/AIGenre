@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.hamcrest.Matchers.matchesPattern;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -151,18 +152,27 @@ public class QueryControllerTest {
             String contentType = MediaTypeFactory.getMediaType(sampleMp3.getFilename())
                 .orElse(MediaType.APPLICATION_OCTET_STREAM).toString();
             byte[] fileBytes = sampleMp3.getContentAsByteArray();
+
             MockMultipartFile file = new MockMultipartFile(
                 "file",
                 sampleMp3.getFilename(),
                 contentType,
                 fileBytes
             );
+
             Map<String, String> result = Map.of(
                 "task_id", hash,
                 "status", "COMPLETE",
                 "genre", "pop",
                 "accuracy", "50%"
             );
+            
+            Map<String, String> metadata = Map.of(
+                "mimeType", file.getContentType(),
+                "fileName", file.getName(),
+                "fileSize", Long.toString(file.getSize())
+            );
+
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.of(result));
             String response = mockMvc.perform(MockMvcRequestBuilders.multipart("/api/query")
@@ -170,8 +180,11 @@ public class QueryControllerTest {
             ).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
             Map<String, String> responseMap = objectMapper.readValue(response, new TypeReference<Map<String, String>>(){});
+            Map<String, String> expectedMap = new HashMap<>();
+            expectedMap.putAll(metadata);
+            expectedMap.putAll(result);
             assertEquals(
-                result,    
+                expectedMap,    
                 responseMap
             );
         });

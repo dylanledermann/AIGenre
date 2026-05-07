@@ -1,5 +1,6 @@
 package dylanlederman.ai_genre.controllers;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,16 +55,19 @@ public class QueryController {
         byte[] fileBytes = file.getBytes();
         String fileHash = queryService.hashFile(fileBytes);
 
-        Optional<Map<String, String>> savedRes = queryService.checkHash(fileHash);
-        if (savedRes.isPresent()) {
-            return ResponseEntity.ok(savedRes.get());
-        }
-        
         Map<String, String> metadata = Map.of(
             "mimeType", file.getContentType(),
             "fileName", file.getName(),
             "fileSize", Long.toString(file.getSize())
         );
+
+        Optional<Map<String, String>> savedRes = queryService.checkHash(fileHash);
+        if (savedRes.isPresent()) {
+            Map<String, String> response = new HashMap<>();
+            response.putAll(metadata);
+            response.putAll(savedRes.get());
+            return ResponseEntity.ok(response);
+        }
 
         if (!queryService.saveFile(fileHash, fileBytes, metadata)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid file"));

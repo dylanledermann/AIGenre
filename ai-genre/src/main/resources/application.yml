@@ -8,10 +8,12 @@ spring:
                 host: ${REDIS_CACHE_HOST}
                 port: ${REDIS_PORT}
                 database: 0
+                ttl: 3600000
             broker:
                 host: ${REDIS_BROKER_HOST}
                 port: ${REDIS_PORT}
                 database: 0
+                ttl: 3600000
     datasource:
         url: ${DB_URL}
         username: ${DB_USERNAME}
