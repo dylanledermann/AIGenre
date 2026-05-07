@@ -60,7 +60,7 @@ public class QueryService {
                     "task_id", queryVal.getTaskId(),
                     "status", queryVal.getStatus(),
                     "genre", queryVal.getResult().getOrDefault("genre", "Unknown"),
-                    "acc", queryVal.getResult().getOrDefault("accuracy", "100%")
+                    "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%")
                 )
             );
         }

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import dylanlederman.ai_genre.TestContainers.BaseTestContainers;
 import dylanlederman.ai_genre.config.DataSourceConfig;
 import dylanlederman.ai_genre.models.FileModel;
+import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
 import tools.jackson.core.type.TypeReference;
@@ -70,8 +71,29 @@ public class QueryRepoTest extends BaseTestContainers {
 
         queryRepo.insertFile(upload, file);
 
+        String taskHash = "b".repeat(64);
+        Map<String, String> result = Map.of("key", "value");
+        String status = "PROCESSING";
+
         String insertTaskQuery = """
-            INSERT INTO audio_results ()        
+            INSERT INTO audio_results (sample_hash, file_hash, task_id, status, result::jsonb)
+            VALUE (?, ?, ?, ?, ?)     
         """;
+        jdbcTemplate.update(
+            insertTaskQuery, 
+            taskHash, 
+            hash, 
+            taskHash, 
+            status, 
+            objectMapper.writeValueAsString(insertTaskQuery)
+        );
+
+        ResultModel correctResult = ResultModel.builder()
+            .taskId(taskHash)
+            .status(status)
+            .result(result)
+            .build();
+
+        assertEquals(queryRepo.getByFileHash(hash), correctResult);
     }
 }
