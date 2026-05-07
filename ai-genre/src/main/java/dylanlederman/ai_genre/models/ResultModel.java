@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
 

@@ -51,10 +51,7 @@ public class QueryServiceTest {
     void testHashFunc() {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaaa".getBytes();
-            System.out.println(tempBytes);
-            System.out.println(tempBytes.length);
             String hash = queryService.hashFile(tempBytes);
-            System.out.println(hash);
             assertTrue(hash.length() == 64);
             assertTrue(hash.matches("^[0-9a-f]{64}$"));
         });
@@ -89,9 +86,11 @@ public class QueryServiceTest {
                 .status("COMPLETE")
                 .result(resultMap)
                 .build();
-            
+
             when(queryRepo.getByFileHash(hash)).thenReturn(Optional.of(queryResult));
+
             Optional<Map<String, String>> res = queryService.checkHash(hash);
+            
             assertFalse(res.isEmpty());
             assertTrue(
                 Map.of(
