@@ -59,4 +59,19 @@ public class QueryRepoTest extends BaseTestContainers {
         assertEquals((String) fileRes.get("file_hash"), hash);
         assertArrayEquals((byte[]) fileRes.get("file_bytes"), hash.getBytes());
     }
+
+    @Test
+    @Transactional
+    void testGetByHash() {
+        String hash = "a".repeat(64);
+        Map<String, String> map = Map.of("Key", "Value");
+        UploadModel upload = new UploadModel(hash, map);
+        FileModel file = new FileModel(hash, hash.getBytes());
+
+        queryRepo.insertFile(upload, file);
+
+        String insertTaskQuery = """
+            INSERT INTO audio_results ()        
+        """;
+    }
 }
