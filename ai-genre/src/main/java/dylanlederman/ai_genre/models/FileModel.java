@@ -1,6 +1,7 @@
 package dylanlederman.ai_genre.models;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,8 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileModel {
-    @Size(min=64, max=64)
+    @NotNull @Size(min=64, max=64)
     private String fileHash;
-    @NotEmpty
+    @NotNull @NotEmpty
     private byte[] fileBytes;
 }

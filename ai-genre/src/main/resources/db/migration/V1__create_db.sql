@@ -11,14 +11,16 @@ CREATE TABLE files (
 
 CREATE TABLE audio_results (
     sample_hash CHAR(64) PRIMARY KEY,
-    file_hash CHAR(64) REFERENCES uploads(file_hash),
+    file_hash CHAR(64) REFERENCES uploads(file_hash) NOT NULL,
     task_id UUID NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
-        CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILURE')),
+        CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILED')),
+    error TEXT,
     result JSONB,
     window_start_sample INT,
     sample_rate INT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    finished_at TIMESTAMPTZ
 );
 
 CREATE TABLE spectrograms (

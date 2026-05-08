@@ -14,10 +14,10 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import dylanlederman.ai_genre.models.FileModel;
+import dylanlederman.ai_genre.models.GenreResultModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
 import jakarta.validation.Valid;
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 @Repository
@@ -30,11 +30,13 @@ public class QueryRepo {
     private ObjectMapper objectMapper;
 
     private RowMapper<ResultModel> resultRowMapper() {
-        return (rs, rowNum) -> ResultModel.builder()
-            .taskId((UUID) rs.getObject("task_id"))
-            .status(rs.getString("status"))
-            .result(objectMapper.readValue(rs.getString("result"), new TypeReference<Map<String, String>>(){}))
-            .build();
+        return (rs, rowNum) -> switch(rs.getString("status")) {
+            case "PENDING": yield new ResultModel.Pending(UUID.fromString(rs.getString("task_id")), rs.getString("file_hash"));
+            case "PROCESSING": yield new ResultModel.Processing(UUID.fromString(rs.getString("task_id")), rs.getString("file_hash"));
+            case "COMPLETE": yield new ResultModel.Complete(UUID.fromString(rs.getString("task_id")), rs.getString("file_hash"), objectMapper.readValue(rs.getString("result"), GenreResultModel.class));
+            case "FAILED": yield new ResultModel.Failed(UUID.fromString(rs.getString("task_id")), rs.getString("file_hash"), rs.getString("error"));
+            default: yield new ResultModel.Failed(UUID.fromString(rs.getString("task_id")), rs.getString("file_hash"), "Invalid Status: " + rs.getString("status"));
+        };
     }
 
     @Transactional
@@ -57,7 +59,7 @@ public class QueryRepo {
 
     public Optional<ResultModel> getByFileHash(String file_hash) {
         String getQuery = """
-            SELECT task_id, status, result
+            SELECT task_id, file_hash, status, result, error
             FROM audio_results
             WHERE file_hash = ?
         """;

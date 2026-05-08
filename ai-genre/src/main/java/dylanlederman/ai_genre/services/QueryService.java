@@ -1,31 +1,36 @@
 package dylanlederman.ai_genre.services;
 
 import java.security.MessageDigest;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import dylanlederman.ai_genre.models.FileMetadataModel;
 import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
 import lombok.extern.slf4j.Slf4j;
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Slf4j
 public class QueryService {
-    private QueryRepo queryRepo;
-    private ObjectMapper objectMapper;
-    private RedisTemplate<String, String> redisTemplate;
-    private long ttl;
+    private final QueryRepo queryRepo;
+    private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final long ttl;
 
-    public QueryService(QueryRepo queryRepo, ObjectMapper objectMapper, RedisTemplate<String, String> redisTemplate, @Value("${spring.data.redis.cache.ttl}") long ttl) {
+    public QueryService(
+        QueryRepo queryRepo, 
+        ObjectMapper objectMapper, 
+        RedisTemplate<String, String> redisTemplate, 
+        @Value("${spring.data.redis.cache.ttl}") long ttl
+    ) {
         this.queryRepo = queryRepo;
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
@@ -47,37 +52,57 @@ public class QueryService {
         return hexString.toString();
     }
 
-    public Optional<Map<String, String>> checkHash(String hash) {
+    public Optional<Map<String, Object>> checkHash(String hash) {
         String cached = redisTemplate.opsForValue().get("result:" + hash);
+        Optional<ResultModel> dbResult;
+        ResultModel result;
+
         if (cached != null) {
-            Map<String, String> cachedRes = objectMapper.readValue(cached, new TypeReference<Map<String, String>>(){});
-            return Optional.of(cachedRes);
+            try {
+                result = objectMapper.readValue(cached, ResultModel.Complete.class);
+            } catch (Exception e) {
+                log.error("Malformed cached value: file hash={} result={}", hash, cached);
+                return Optional.empty();
+            }
+        } else if ((dbResult = queryRepo.getByFileHash(hash)).isPresent()) {
+            result = dbResult.get();
+        } else {
+            return Optional.empty();
         }
 
-        Optional<ResultModel> queryRes = queryRepo.getByFileHash(hash);
-        if (queryRes.isPresent()) {
-            ResultModel queryVal = queryRes.get();
-            Map<String, String> response = Map.of(
-                "task_id", queryVal.getTaskId().toString(),
-                "status", queryVal.getStatus(),
-                "genre", queryVal.getResult().getOrDefault("genre", "Unknown"),
-                "accuracy", queryVal.getResult().getOrDefault("accuracy", "100%"),
-                "error", queryVal.getResult().getOrDefault("error", "N/A")
-            );
-            redisTemplate.opsForValue().set(hash, objectMapper.writeValueAsString(response), Duration.ofMillis(ttl));
-            return Optional.of(
-                response
-            );
+        Set<String> resultViolations = result.validate();
+
+        if(!resultViolations.isEmpty()) {
+            log.error("Invalid saved results violations={}", resultViolations);
+            return Optional.empty();
         }
 
-        return Optional.empty();
+        // Only cache complete results (They should not change)
+        if (result instanceof ResultModel.Complete) {
+            try {
+                redisTemplate.opsForValue().set("result:" + hash, objectMapper.writeValueAsString(result), ttl);
+            } catch (Exception e) {
+                log.error("Failed to cache result fileHash={}", hash, e);
+            }
+        }
+
+        return Optional.of(resultModelToMap(result));
     }
 
-    public boolean saveFile(String hash, byte[] mp3_bytes, Map<String, String> metadata) {
+    private Map<String, Object> resultModelToMap(ResultModel result) {
+        return switch(result) {
+            case ResultModel.Pending r: yield Map.of("task_id", r.taskId(), "status", r.status());
+            case ResultModel.Processing r: yield Map.of("task_id", r.taskId(), "status", r.status());
+            case ResultModel.Complete r: yield Map.of("status", r.status(), "result", r.result());
+            case ResultModel.Failed r: yield Map.of("status", r.status(), "error", r.error());
+        };
+    }
+
+    public boolean saveFile(String hash, byte[] mp3_bytes, FileMetadataModel metadata) {
         if (
             !hash.matches("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$") ||
             mp3_bytes.length == 0 ||
-            !metadata.getOrDefault("mimeType", "").matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")
+            !metadata.getMimeType().matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")
         ) {
             return false;
         }

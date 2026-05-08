@@ -2,15 +2,11 @@ package dylanlederman.ai_genre.Unit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.hamcrest.Matchers.matchesPattern;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,6 +27,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import dylanlederman.ai_genre.config.SecurityConfig;
 import dylanlederman.ai_genre.controllers.QueryController;
+import dylanlederman.ai_genre.models.FileMetadataModel;
 import dylanlederman.ai_genre.services.QueryService;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -98,10 +95,10 @@ public class QueryControllerTest {
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.empty());
             
-            Map<String, String> metadata = Map.of(
-                "mimeType", file.getContentType(),
-                "fileName", file.getName(),
-                "fileSize", Long.toString(file.getSize())
+            FileMetadataModel metadata = new FileMetadataModel(
+                file.getName(),
+                file.getSize(),
+                file.getContentType()
             );
 
             when(queryService.saveFile(hash, fileBytes, metadata)).thenReturn(false);
@@ -129,10 +126,10 @@ public class QueryControllerTest {
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.empty());
             
-            Map<String, String> metadata = Map.of(
-                "mimeType", file.getContentType(),
-                "fileName", file.getName(),
-                "fileSize", Long.toString(file.getSize())
+            FileMetadataModel metadata = new FileMetadataModel(
+                file.getName(),
+                file.getSize(),
+                file.getContentType()
             );
 
             when(queryService.saveFile(hash, fileBytes, metadata)).thenReturn(true);
@@ -141,7 +138,6 @@ public class QueryControllerTest {
                 .file(file)
             ).andExpect(status().isAccepted())
             .andExpect(jsonPath("$.task_id").value(matchesPattern("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$")));
-            verify(redisTemplate).convertAndSend(eq("celery:tasks"), any());
         });
     }
 
@@ -160,17 +156,8 @@ public class QueryControllerTest {
                 fileBytes
             );
 
-            Map<String, String> result = Map.of(
-                "task_id", hash,
-                "status", "COMPLETE",
-                "genre", "pop",
-                "accuracy", "50%"
-            );
-            
-            Map<String, String> metadata = Map.of(
-                "mimeType", file.getContentType(),
-                "fileName", file.getName(),
-                "fileSize", Long.toString(file.getSize())
+            Map<String, Object> result = Map.of(
+                "key", "val"
             );
 
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
@@ -179,12 +166,11 @@ public class QueryControllerTest {
                 .file(file)
             ).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
-            Map<String, String> responseMap = objectMapper.readValue(response, new TypeReference<Map<String, String>>(){});
-            Map<String, String> expectedMap = new HashMap<>();
-            expectedMap.putAll(metadata);
-            expectedMap.putAll(result);
+
+            Map<String, Object> responseMap = objectMapper.readValue(response, new TypeReference<Map<String, Object>>(){});
+            
             assertEquals(
-                expectedMap,    
+                result,
                 responseMap
             );
         });

@@ -1,7 +1,6 @@
 package dylanlederman.ai_genre.Unit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -19,6 +18,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import dylanlederman.ai_genre.models.GenreResultModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
 import dylanlederman.ai_genre.services.QueryService;
@@ -26,6 +26,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(classes={
     QueryService.class
+}, properties = {
+    "spring.data.redis.cache.ttl=0"
 })
 @ImportAutoConfiguration(classes={
     ObjectMapper.class
@@ -58,16 +60,39 @@ public class QueryServiceTest {
     }
 
     @Test
-    void testCheckHashCached() {
+    void testCheckInvalidResultModel() {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaa".getBytes();
             String hash = queryService.hashFile(tempBytes);
             Map<String, String> cache = Map.of("Key", "Value");
             String cacheString = objectMapper.writeValueAsString(cache);
             when(valueOperations.get("result:" + hash)).thenReturn(cacheString);
-            Optional<Map<String, String>> res = queryService.checkHash(hash);
+            Optional<Map<String, Object>> res = queryService.checkHash(hash);
+            assertTrue(res.isEmpty());
+        });
+    }
+
+    @Test
+    void testCheckHashCached() {
+        assertDoesNotThrow(() -> {
+            byte[] tempBytes = "aaaa".getBytes();
+            String hash = queryService.hashFile(tempBytes);
+            GenreResultModel resultMap = new GenreResultModel(
+                "pop",
+                "50%"
+            );
+            ResultModel.Complete cacheResult = new ResultModel.Complete(UUID.randomUUID(), hash, resultMap);
+            String cacheString = objectMapper.writeValueAsString(cacheResult);
+
+            when(valueOperations.get("result:" + hash)).thenReturn(cacheString);
+
+            Optional<Map<String, Object>> res = queryService.checkHash(hash);
+
             assertFalse(res.isEmpty());
-            assertEquals(cache, res.get());
+            assertTrue(Map.of(
+                "status", cacheResult.status(),
+                "result", cacheResult.result()
+            ).equals(res.get()));
         });
     }
 
@@ -76,31 +101,17 @@ public class QueryServiceTest {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaa".getBytes();
             String hash = queryService.hashFile(tempBytes);
-            Map<String, String> resultMap = Map.of(
-                "genre", "pop",
-                "accuracy", "50%"
-            );
-            UUID taskId = UUID.randomUUID();
-            ResultModel queryResult = ResultModel.builder()
-                .taskId(taskId)
-                .status("COMPLETE")
-                .result(resultMap)
-                .build();
+            ResultModel.Pending queryResult = new ResultModel.Pending(UUID.randomUUID(), hash);
 
             when(queryRepo.getByFileHash(hash)).thenReturn(Optional.of(queryResult));
 
-            Optional<Map<String, String>> res = queryService.checkHash(hash);
+            Optional<Map<String, Object>> res = queryService.checkHash(hash);
             
             assertFalse(res.isEmpty());
-            assertTrue(
-                Map.of(
-                    "task_id", queryResult.getTaskId().toString(),
-                    "status", queryResult.getStatus(),
-                    "genre", queryResult.getResult().get("genre"),
-                    "accuracy", queryResult.getResult().get("accuracy"),
-                    "error", "N/A"
-                ).equals(res.get())
-            );
+            assertTrue(Map.of(
+                "task_id", queryResult.taskId(),
+                "status", queryResult.status()
+            ).equals(res.get()));
         });
     }
     

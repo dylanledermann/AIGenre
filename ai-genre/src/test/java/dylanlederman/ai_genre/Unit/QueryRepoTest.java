@@ -18,11 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import dylanlederman.ai_genre.TestContainers.BaseTestContainers;
 import dylanlederman.ai_genre.config.DataSourceConfig;
+import dylanlederman.ai_genre.models.FileMetadataModel;
 import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 
@@ -43,8 +43,12 @@ public class QueryRepoTest extends BaseTestContainers {
     @Transactional
     void testInsert() {
         String hash = "a".repeat(64);
-        Map<String, String> map = Map.of("Key", "Value");
-        UploadModel upload = new UploadModel(hash, map);
+        FileMetadataModel metadata = new FileMetadataModel(
+            "fileName",
+            (long) 0,
+            "mimeType"
+        );
+        UploadModel upload = new UploadModel(hash, metadata);
         FileModel file = new FileModel(hash, hash.getBytes());
         queryRepo.insertFile(upload, file);
         assertEquals(queryRepo.getByFileHash(hash), Optional.empty());
@@ -57,7 +61,7 @@ public class QueryRepoTest extends BaseTestContainers {
         Map<String, Object> uploadRes = jdbcTemplate.queryForMap(uploadQuery, hash);
         Map<String, Object> fileRes = jdbcTemplate.queryForMap(fileQuery, hash);
         assertEquals((String) uploadRes.get("file_hash"), hash);
-        assertEquals(objectMapper.readValue(((PGobject) uploadRes.get("file_metadata")).getValue(), new TypeReference<Map<String, String>>(){}), map);
+        assertEquals(objectMapper.readValue(((PGobject) uploadRes.get("file_metadata")).getValue(), FileMetadataModel.class), metadata);
         assertEquals((String) fileRes.get("file_hash"), hash);
         assertArrayEquals((byte[]) fileRes.get("file_bytes"), hash.getBytes());
     }
@@ -66,35 +70,35 @@ public class QueryRepoTest extends BaseTestContainers {
     @Transactional
     void testGetByHash() {
         String hash = "a".repeat(64);
-        Map<String, String> map = Map.of("Key", "Value");
-        UploadModel upload = new UploadModel(hash, map);
+        FileMetadataModel metadata = new FileMetadataModel(
+            "fileName",
+            (long) 0,
+            "mimeType"
+        );
+        UploadModel upload = new UploadModel(hash, metadata);
         FileModel file = new FileModel(hash, hash.getBytes());
 
         queryRepo.insertFile(upload, file);
 
         String taskHash = "b".repeat(64);
-        Map<String, String> result = Map.of("key", "value");
         String status = "PROCESSING";
         UUID taskId = UUID.randomUUID();
 
         String insertTaskQuery = """
-            INSERT INTO audio_results (sample_hash, file_hash, task_id, status, result)
-            VALUES (?, ?, ?, ?, ?::jsonb)     
+            INSERT INTO audio_results (sample_hash, file_hash, task_id, status, error, result)
+            VALUES (?, ?, ?, ?, ?, ?::jsonb)     
         """;
         jdbcTemplate.update(
             insertTaskQuery, 
             taskHash, 
             hash, 
             taskId, 
-            status, 
-            objectMapper.writeValueAsString(result)
+            status,
+            null,
+            null
         );
 
-        ResultModel correctResult = ResultModel.builder()
-            .taskId(taskId)
-            .status(status)
-            .result(result)
-            .build();
+        ResultModel correctResult = new ResultModel.Processing(taskId, hash);
 
         Optional<ResultModel> queryRes = queryRepo.getByFileHash(hash);
 
