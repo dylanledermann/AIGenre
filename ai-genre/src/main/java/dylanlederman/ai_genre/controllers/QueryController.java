@@ -68,11 +68,11 @@ public class QueryController {
         UUID taskId = UUID.randomUUID();
 
         Map<String, String> task = Map.of(
-            "task_id", taskId.toString(),
-            "file_hash", fileHash
+            "taskId", taskId.toString(),
+            "fileHash", fileHash
         );
         redisTemplate.convertAndSend("celery:tasks", objectMapper.writeValueAsString(task));
         
-        return ResponseEntity.accepted().body(Map.of("task_id", taskId));
+        return ResponseEntity.accepted().body(Map.of("taskId", taskId));
     }
 }

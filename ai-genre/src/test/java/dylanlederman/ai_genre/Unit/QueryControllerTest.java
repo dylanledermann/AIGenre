@@ -137,7 +137,7 @@ public class QueryControllerTest {
             mockMvc.perform(MockMvcRequestBuilders.multipart("/api/query")
                 .file(file)
             ).andExpect(status().isAccepted())
-            .andExpect(jsonPath("$.task_id").value(matchesPattern("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$")));
+            .andExpect(jsonPath("$.taskId").value(matchesPattern("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$")));
         });
     }
 
