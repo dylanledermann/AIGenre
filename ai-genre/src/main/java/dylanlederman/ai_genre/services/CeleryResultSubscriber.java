@@ -36,7 +36,7 @@ public class CeleryResultSubscriber implements MessageListener {
         SimpMessagingTemplate wsTemplate,
         @Qualifier("brokerRedisTemplate") RedisTemplate<String, String> redisTemplate,
         ObjectMapper objectMapper,
-        @Value("${spring.data.redis.cache.ttl}") long ttl,
+        @Value("${spring.data.redis.broker.ttl}") long ttl,
         Validator validator
     ) {
         this.wsTemplate = wsTemplate;
@@ -98,7 +98,7 @@ public class CeleryResultSubscriber implements MessageListener {
     private void pushResult(UUID taskId, String status, Object result, String error) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("status", status);
-        if (result != null) payload.put("result", result);
+        if (result != null) payload.put("results", result);
         if (error != null) payload.put("error", error);
         wsTemplate.convertAndSend("topic/results/" + taskId, (Object) payload);
     }
