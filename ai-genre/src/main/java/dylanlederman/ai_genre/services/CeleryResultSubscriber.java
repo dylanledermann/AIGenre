@@ -34,7 +34,7 @@ public class CeleryResultSubscriber implements MessageListener {
 
     public CeleryResultSubscriber(
         SimpMessagingTemplate wsTemplate,
-        @Qualifier("brokerRedisTemplate") RedisTemplate<String, String> redisTemplate,
+        RedisTemplate<String, String> redisTemplate,
         ObjectMapper objectMapper,
         @Value("${spring.data.redis.broker.ttl}") long ttl,
         Validator validator
@@ -85,7 +85,7 @@ public class CeleryResultSubscriber implements MessageListener {
             case ResultModel.Pending r -> pushResult(r.taskId(), r.status(), null, null);
             case ResultModel.Processing r -> pushResult(r.taskId(), r.status(), null, null);
             case ResultModel.Complete r -> {
-                cacheResult(r.fileHash(), r.result());
+                cacheResult(r.fileHash(), r.taskId(), r.result());
                 pushResult(r.taskId(), r.status(), r.result(), null);
             }
             case ResultModel.Failed r -> {
@@ -103,9 +103,11 @@ public class CeleryResultSubscriber implements MessageListener {
         wsTemplate.convertAndSend("topic/results/" + taskId, (Object) payload);
     }
 
-    private void cacheResult(String fileHash, Object result) {
+    private void cacheResult(String fileHash, UUID taskId, Object result) {
          try {
             redisTemplate.opsForValue().set("result:" + fileHash, objectMapper.writeValueAsString(result), ttl);
+            // Short lived cache value for clients that join websocket as it finishes (5 minutes: 1000ms/s * 60s/min * 5min)
+            redisTemplate.opsForValue().set("result:" + taskId.toString(), objectMapper.writeValueAsString(result), 300000);
          } catch (Exception e) {
             log.error("Failed to cache result fileHash={}", fileHash, e);
          }

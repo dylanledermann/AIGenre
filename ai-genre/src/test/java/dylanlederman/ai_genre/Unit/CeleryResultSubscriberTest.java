@@ -40,7 +40,7 @@ import tools.jackson.databind.ObjectMapper;
 public class CeleryResultSubscriberTest {
     @MockitoBean
     private SimpMessagingTemplate wsTemplate;
-    @MockitoBean(name="brokerRedisTemplate")
+    @MockitoBean
     private RedisTemplate<String, String> redisTemplate;
     @MockitoBean
     private ValueOperations<String, String> valueOps;

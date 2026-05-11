@@ -2,6 +2,8 @@ package dylanlederman.ai_genre.Unit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -125,6 +127,10 @@ public class QueryControllerTest {
             );
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.empty());
+            when(queryService.createTask(eq(hash), any())).thenAnswer(invocation -> {
+                // Return second arg (taskId)
+                return invocation.getArgument(1);
+            });
             
             FileMetadataModel metadata = new FileMetadataModel(
                 file.getName(),

@@ -17,16 +17,8 @@ CREATE TABLE audio_results (
         CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILED')),
     error TEXT,
     result JSONB,
-    window_start_sample INT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     finished_at TIMESTAMPTZ
-);
-
-CREATE TABLE spectrograms (
-    sample_hash CHAR(64) PRIMARY KEY REFERENCES audio_results(sample_hash),
-    spectrogram_rows INT,
-    spectrogram_cols INT,
-    spectrogram BYTEA
 );
 
 CREATE INDEX idx_uploads_created_at ON uploads(created_at);
