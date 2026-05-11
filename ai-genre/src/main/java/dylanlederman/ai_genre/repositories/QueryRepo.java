@@ -70,4 +70,26 @@ public class QueryRepo {
             return Optional.empty();
         }
     }
+
+    public UUID insertTask(String fileHash, UUID taskId) {
+        String insertQuery = """
+            INSERT INTO audio_results
+            (task_id, file_hash)
+            VALUES (:taskId, :fileHash)
+            ON CONFLICT (file_hash)
+            DO NOTHING
+        """;
+        String selectQuery = """
+            SELECT task_id
+            FROM audio_results
+            WHERE file_hash = :fileHash    
+        """;
+
+        namedJdbcTemplate.update(insertQuery, Map.of(
+            "taskId", taskId,
+            "fileHash", fileHash
+        ));
+
+        return namedJdbcTemplate.queryForObject(selectQuery, Map.of("fileHash", fileHash), UUID.class);
+    }
 }

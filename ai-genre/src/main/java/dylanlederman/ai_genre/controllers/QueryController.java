@@ -66,6 +66,11 @@ public class QueryController {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid file"));
         }
         UUID taskId = UUID.randomUUID();
+        UUID returnedTaskId = queryService.createTask(fileHash, taskId);
+
+        if (!returnedTaskId.equals(taskId)) {
+            return ResponseEntity.accepted().body(Map.of("taskId", returnedTaskId));
+        }
 
         Map<String, String> task = Map.of(
             "taskId", taskId.toString(),

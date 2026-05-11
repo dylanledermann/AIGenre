@@ -105,4 +105,43 @@ public class QueryRepoTest extends BaseTestContainers {
         assertFalse(queryRes.isEmpty());
         assertEquals(queryRes.get(), correctResult);
     }
+
+    @Test
+    @Transactional
+    void testDuplicateHashInsert() {
+        // Set up values to test duplication on fileHash
+        String hash = "a".repeat(64);
+        FileMetadataModel metadata = new FileMetadataModel(
+            "fileName",
+            (long) 0,
+            "mimeType"
+        );
+        UploadModel upload = new UploadModel(hash, metadata);
+        FileModel file = new FileModel(hash, hash.getBytes());
+
+        queryRepo.insertFile(upload, file);
+
+        String taskHash = "b".repeat(64);
+        String status = "PROCESSING";
+        UUID taskId = UUID.randomUUID();
+
+        String insertTaskQuery = """
+            INSERT INTO audio_results (sample_hash, file_hash, task_id, status, error, result)
+            VALUES (?, ?, ?, ?, ?, ?::jsonb)     
+        """;
+        jdbcTemplate.update(
+            insertTaskQuery, 
+            taskHash, 
+            hash, 
+            taskId, 
+            status,
+            null,
+            null
+        );
+
+        UUID secondTaskId = UUID.randomUUID();
+
+        UUID returnedTaskId = queryRepo.insertTask(hash, secondTaskId);
+        assertEquals(taskId, returnedTaskId);
+    }
 }
