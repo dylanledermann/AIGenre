@@ -3,6 +3,8 @@ package dylanlederman.ai_genre.Unit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,20 +14,23 @@ import static org.hamcrest.Matchers.matchesPattern;
 import java.util.Map;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.Resource;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.web.client.RestClient;
 
 import dylanlederman.ai_genre.config.SecurityConfig;
 import dylanlederman.ai_genre.controllers.QueryController;
@@ -34,7 +39,7 @@ import dylanlederman.ai_genre.services.QueryService;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-@WebMvcTest(QueryController.class)
+@WebMvcTest(value=QueryController.class, properties="spring.celery.url=http://localhost:8000")
 @Import({SecurityConfig.class})
 @ImportAutoConfiguration(classes={
     ObjectMapper.class
@@ -42,8 +47,8 @@ import tools.jackson.databind.ObjectMapper;
 public class QueryControllerTest {
     @MockitoBean
     private QueryService queryService;
-    @MockitoBean(name="brokerRedisTemplate")
-    private RedisTemplate<String, String> redisTemplate;
+    @MockitoBean
+    private RestClient restClient;
     @Autowired
     private MockMvc mockMvc;
     @Autowired
@@ -52,6 +57,21 @@ public class QueryControllerTest {
     Resource sampleImage;
     @Value("classpath:TestFiles/sample_mp3.mp3")
     Resource sampleMp3;
+    @Value("${spring.celery.url}") 
+    private String workerUrl;
+
+    private RestClient.RequestBodyUriSpec requestBodyUriSpec = Mockito.mock(RestClient.RequestBodyUriSpec.class);
+    private RestClient.RequestBodySpec requestBodySpec = Mockito.mock(RestClient.RequestBodySpec.class);
+    private RestClient.ResponseSpec responseSpec = Mockito.mock(RestClient.ResponseSpec.class);
+
+    @BeforeEach
+    void setUp() {
+        when(restClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        when(requestBodySpec.body(anyMap())).thenReturn(requestBodySpec);
+        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.toBodilessEntity()).thenReturn(ResponseEntity.ok().build());
+    }
 
     @Test
     void testInvalidMp3Format() {

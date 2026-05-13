@@ -4,37 +4,32 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import dylanlederman.ai_genre.models.FileMetadataModel;
 import dylanlederman.ai_genre.services.QueryService;
 import lombok.extern.slf4j.Slf4j;
-import tools.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/query")
 @Slf4j
 public class QueryController {
-    private QueryService queryService;
-    private ObjectMapper objectMapper;
-    @Qualifier("brokerRedisTemplate")
-    private RedisTemplate<String, String> redisTemplate;
+    private final QueryService queryService;
+    private final RestClient restClient;
+    
 
     public QueryController(
         QueryService queryService,
-        ObjectMapper objectMapper,
-        @Qualifier("brokerRedisTemplate") RedisTemplate<String, String> redisTemplate
+        RestClient restClient
     ) {
         this.queryService = queryService;
-        this.objectMapper = objectMapper;
-        this.redisTemplate = redisTemplate;
+        this.restClient = restClient;
     }
     
     @PostMapping()
@@ -72,11 +67,16 @@ public class QueryController {
             return ResponseEntity.accepted().body(Map.of("taskId", returnedTaskId));
         }
 
-        Map<String, String> task = Map.of(
+        Map<String, Object> task = Map.of(
             "taskId", taskId.toString(),
             "fileHash", fileHash
         );
-        redisTemplate.convertAndSend("celery:tasks", objectMapper.writeValueAsString(task));
+
+        restClient.post()
+            .uri("/enqueue")
+            .body(task)
+            .retrieve()
+            .toBodilessEntity();
         
         return ResponseEntity.accepted().body(Map.of("taskId", taskId));
     }
