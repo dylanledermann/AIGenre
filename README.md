@@ -23,10 +23,10 @@ You can check the result with the following command: `python -c "import torch; p
 This repository is split into different .ipynb files containing different models and custom datasets as well as the website implementation.
 
 ## Results
-The ResNet model was able to achieve over 70% with and without lyrics. Adding lyrics yielded an increase of 2% in the final accuracy. In the ResNet testing dataset, the most common error occurred through mixing up Easy-Listening and Pop genres, which both 
+The ResNet model was able to achieve over 70% with and without lyrics. The transformer models struggled to reach 70% accuracy, most likely due to lacking data. While training the transformer both would coverge to around 72%. After adding lyrics, it was determined that since the lyrics were generated using another AI model (whisper), the lyrics input were unnecessary complexity. With the lyrics the model would have to learn the spectrograms and the possible connections made by the lyric model, which if it just generated words, would have little, or negative, impact. The main error point in all models was mixing up easy-listening and pop.
 | Model | Without Lyrics Accuracy | Without Lyrics Loss | With Lyrics Accuracy | With Lyrics Loss
 | --- | :---: | :---: | :---: | :---: |
-| ResNet 18 | 73.53% | 1.0223 | 72.01% | 1.0167
+| ResNet 18 | 73.53% | 1.0215 | 72.01% | 1.0167
 | Generic Transformer | 67.95% | 1.1174 | 70.60% | 1.0636
 
 # Website
