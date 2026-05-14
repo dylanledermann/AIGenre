@@ -18,6 +18,6 @@ def build_model(config: dict) -> None:
         torch.nn.Linear(_model.fc.in_features, config.get("num_classes", 16))
     )
 
-    _model.load_state_dict(config['path'])
+    _model.load_state_dict(torch.load(config['path'], weights_only=True))
     _model = _model.to(device)
     _model.eval()

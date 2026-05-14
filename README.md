@@ -20,11 +20,14 @@ pip install torch torchvision torchaudio
 You can check the result with the following command: `python -c "import torch; print(torch.__version__)"`, which should output `{torch_version}+cpu`
 
 ## Layout
-This repository is split into different .ipynb files containing different models and custom datasets.
+This repository is split into different .ipynb files containing different models and custom datasets as well as the website implementation.
 
 ## Results
 The ResNet model was able to achieve over 70% with and without lyrics. Adding lyrics yielded an increase of 2% in the final accuracy. In the ResNet testing dataset, the most common error occurred through mixing up Easy-Listening and Pop genres, which both 
 | Model | Without Lyrics Accuracy | Without Lyrics Loss | With Lyrics Accuracy | With Lyrics Loss
 | --- | :---: | :---: | :---: | :---: |
-| ResNet 18 | 72.18% | 1.0223 | 72.01% | 1.0167
+| ResNet 18 | 73.53% | 1.0223 | 72.01% | 1.0167
 | Generic Transformer | 67.95% | 1.1174 | 70.60% | 1.0636
+
+# Website
+The website was created using SpringBoot for the backend (./ai-genre), React for the frontend (./ai_genre_frontend), and a Celery worker with a FastAPI entrypoint(celery_worker). Each service has its own README.md file that indicates how to run each. 
