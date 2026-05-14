@@ -59,13 +59,6 @@ const WebsocketProvider = ({children}: {children: React.ReactNode}) => {
     const open = useCallback((taskId: string, url: string) => {
         const exists = websockets.current.has(taskId);
 
-        // Add new call to calls
-        setCalls(prev => {
-            const next = structuredClone(prev);
-            next.push({taskId: taskId, ...connections.get(taskId)} as WebsocketData);
-            return next;
-        });
-
         if (!exists) {
             const newWebsocket = new WebSocket(url);
 
@@ -99,6 +92,13 @@ const WebsocketProvider = ({children}: {children: React.ReactNode}) => {
 
             newWebsocket.onclose = () => {};
         }
+
+        // Add new call to calls
+        setCalls(prev => {
+            const next = structuredClone(prev);
+            next.push({taskId: taskId, ...connections.get(taskId)} as WebsocketData);
+            return next;
+        });
     }, []);
 
     const close = useCallback((taskId: string) => {
