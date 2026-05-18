@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 import dylanlederman.ai_genre.models.FileMetadataModel;
+import dylanlederman.ai_genre.services.GrpcServiceStub;
 import dylanlederman.ai_genre.services.QueryService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,30 +21,25 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class QueryController {
     private final QueryService queryService;
-    private final RestClient restClient;
-    
+    private final GrpcServiceStub grpcServiceStub;
 
     public QueryController(
-        QueryService queryService,
-        RestClient restClient
-    ) {
+            QueryService queryService,
+            GrpcServiceStub gprcServiceStub) {
         this.queryService = queryService;
-        this.restClient = restClient;
+        this.grpcServiceStub = gprcServiceStub;
     }
-    
+
     @PostMapping()
     public ResponseEntity<?> handleMp3Upload(@RequestParam("file") MultipartFile file) throws Exception {
-        if (
-            file.isEmpty() || 
-            file.getContentType() == null ||
-            !file.getContentType().matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")
-        ) {
+        if (file.isEmpty() ||
+                file.getContentType() == null ||
+                !file.getContentType()
+                        .matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")) {
             return ResponseEntity.badRequest().body(
-                Map.of(
-                    "error", 
-                    String.format("%s file types not allowed", file.getContentType())
-                )
-            );
+                    Map.of(
+                            "error",
+                            String.format("%s file types not allowed", file.getContentType())));
         }
 
         byte[] fileBytes = file.getBytes();
@@ -67,17 +62,12 @@ public class QueryController {
             return ResponseEntity.accepted().body(Map.of("taskId", returnedTaskId));
         }
 
-        Map<String, Object> task = Map.of(
-            "taskId", taskId.toString(),
-            "fileHash", fileHash
-        );
-
-        restClient.post()
-            .uri("/enqueue")
-            .body(task)
-            .retrieve()
-            .toBodilessEntity();
-        
-        return ResponseEntity.accepted().body(Map.of("taskId", taskId));
+        try {
+            grpcServiceStub.buildTaskStub(taskId.toString(), fileHash, fileBytes).get();
+            return ResponseEntity.accepted().body(Map.of("taskId", taskId));
+        } catch (Exception e) {
+            log.error("Error occurred building task stub: ", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Internal Server Error"));
+        }
     }
 }

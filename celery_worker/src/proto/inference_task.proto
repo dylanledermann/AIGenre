@@ -1,0 +1,10 @@
+service InferenceService {
+    rpc StreamFile(stream FileChunk) return (EnqueueResponse)
+}
+
+message FileChunk {
+    string task_id = 1;
+    string file_hash = 2;
+    bytes chunk = 3;
+    bool is_last = 4;
+}
