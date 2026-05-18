@@ -4,11 +4,6 @@ CREATE TABLE uploads (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE files (
-    file_hash CHAR(64) PRIMARY KEY REFERENCES uploads(file_hash),
-    file_bytes BYTEA
-);
-
 CREATE TABLE audio_results (
     task_id UUID PRIMARY KEY,
     sample_hash CHAR(64) UNIQUE,

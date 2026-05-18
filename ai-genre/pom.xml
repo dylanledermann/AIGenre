@@ -131,13 +131,6 @@
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
@@ -169,21 +162,25 @@
 				<artifactId>protobuf-maven-plugin</artifactId>
 
 				<configuration>
-					<protocVersion>${protobuf-java.version}</protocVersion>
-					<binaryMavenPlugins>
-						<binaryMavenPlugin>
+					<protoc kind="binary-maven">
+						<version>${protobuf-java.version}</version>
+					</protoc>
+					<plugins>
+						<!-- Vanilla protoc plugins - these are platform specific executables
+							just like protoc is. -->
+						<plugin kind="binary-maven">
 							<groupId>io.grpc</groupId>
 							<artifactId>protoc-gen-grpc-java</artifactId>
 							<version>1.80.0</version>
-						</binaryMavenPlugin>
-					</binaryMavenPlugins>
+						</plugin>
+					</plugins>
 				</configuration>
 
 				<executions>
 					<execution>
-					<goals>
-						<goal>generate</goal>
-					</goals>
+						<goals>
+							<goal>generate</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>

@@ -8,12 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.GenreResultModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
@@ -40,21 +38,16 @@ public class QueryRepo {
     }
 
     @Transactional
-    public void insertFile(@Valid UploadModel upload, @Valid FileModel file) {
+    public void insertFile(@Valid UploadModel upload) {
         String uploadInsertQuery = """
             INSERT INTO uploads (file_hash, file_metadata) 
             VALUES(:fileHash, :fileMetadata::jsonb)
-        """;
-        String fileInsertQuery = """
-            INSERT INTO files (file_hash, file_bytes)
-            VALUES(:fileHash, :fileBytes)        
         """;
 
         namedJdbcTemplate.update(uploadInsertQuery, Map.of(
             "fileHash", upload.getFileHash(),
             "fileMetadata", objectMapper.writeValueAsString(upload.getFileMetadata())
         ));
-        namedJdbcTemplate.update(fileInsertQuery, new BeanPropertySqlParameterSource(file));
     }
 
     public Optional<ResultModel> getByFileHash(String file_hash) {
@@ -71,7 +64,17 @@ public class QueryRepo {
         }
     }
 
-    public UUID insertTask(String fileHash, UUID taskId) {
+    public void resetTask(String fileHash, UUID taskId) {
+        String updateQuery = """
+            UPDATE audio_results
+            SET task_id = :taskId, status = 'PENDING', error = NULL, result = NULL, created_at = NOW(), finished_at = NULL
+            WHERE file_hash = :fileHash
+        """;
+
+        namedJdbcTemplate.update(updateQuery, Map.of("taskId", taskId, "fileHash", fileHash));
+    }
+
+    public void insertTask(String fileHash, UUID taskId) {
         String insertQuery = """
             INSERT INTO audio_results
             (task_id, file_hash)
@@ -79,17 +82,9 @@ public class QueryRepo {
             ON CONFLICT (file_hash)
             DO NOTHING
         """;
-        String selectQuery = """
-            SELECT task_id
-            FROM audio_results
-            WHERE file_hash = :fileHash    
-        """;
-
         namedJdbcTemplate.update(insertQuery, Map.of(
             "taskId", taskId,
             "fileHash", fileHash
         ));
-
-        return namedJdbcTemplate.queryForObject(selectQuery, Map.of("fileHash", fileHash), UUID.class);
     }
 }

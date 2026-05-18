@@ -3,7 +3,6 @@ package dylanlederman.ai_genre.Unit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -13,6 +12,7 @@ import static org.hamcrest.Matchers.matchesPattern;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,21 +20,22 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.web.client.RestClient;
 
 import dylanlederman.ai_genre.config.SecurityConfig;
 import dylanlederman.ai_genre.controllers.QueryController;
 import dylanlederman.ai_genre.models.FileMetadataModel;
+import dylanlederman.ai_genre.proto.EnqueueResponse;
+import dylanlederman.ai_genre.services.GrpcServiceStub;
 import dylanlederman.ai_genre.services.QueryService;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -42,13 +43,13 @@ import tools.jackson.databind.ObjectMapper;
 @WebMvcTest(value=QueryController.class, properties="spring.celery.url=http://localhost:8000")
 @Import({SecurityConfig.class})
 @ImportAutoConfiguration(classes={
-    ObjectMapper.class
+    JacksonAutoConfiguration.class
 })
 public class QueryControllerTest {
     @MockitoBean
     private QueryService queryService;
     @MockitoBean
-    private RestClient restClient;
+    private GrpcServiceStub grpcClient;
     @Autowired
     private MockMvc mockMvc;
     @Autowired
@@ -60,17 +61,11 @@ public class QueryControllerTest {
     @Value("${spring.celery.url}") 
     private String workerUrl;
 
-    private RestClient.RequestBodyUriSpec requestBodyUriSpec = Mockito.mock(RestClient.RequestBodyUriSpec.class);
-    private RestClient.RequestBodySpec requestBodySpec = Mockito.mock(RestClient.RequestBodySpec.class);
-    private RestClient.ResponseSpec responseSpec = Mockito.mock(RestClient.ResponseSpec.class);
-
     @BeforeEach
     void setUp() {
-        when(restClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-        when(requestBodySpec.body(anyMap())).thenReturn(requestBodySpec);
-        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.toBodilessEntity()).thenReturn(ResponseEntity.ok().build());
+        EnqueueResponse mockedResponse = Mockito.mock(EnqueueResponse.class);
+        CompletableFuture<EnqueueResponse> mockedFuture = CompletableFuture.completedFuture(mockedResponse);
+        when(grpcClient.buildTaskStub(anyString(), anyString(), any())).thenReturn(mockedFuture);
     }
 
     @Test

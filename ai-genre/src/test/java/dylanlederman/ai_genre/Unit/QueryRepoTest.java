@@ -1,8 +1,8 @@
 package dylanlederman.ai_genre.Unit;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import java.util.Optional;
@@ -11,7 +11,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import dylanlederman.ai_genre.TestContainers.BaseTestContainers;
 import dylanlederman.ai_genre.config.DataSourceConfig;
 import dylanlederman.ai_genre.models.FileMetadataModel;
-import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
@@ -30,7 +32,11 @@ import tools.jackson.databind.ObjectMapper;
     DataSourceConfig.class,
     QueryRepo.class
 })
-@EnableAutoConfiguration
+@ImportAutoConfiguration(classes={
+    DataSourceAutoConfiguration.class,
+    DataSourceTransactionManagerAutoConfiguration.class, // @Transactional class
+    JacksonAutoConfiguration.class // ObjectMapper class
+})
 public class QueryRepoTest extends BaseTestContainers {
     @Autowired
     QueryRepo queryRepo;
@@ -49,21 +55,14 @@ public class QueryRepoTest extends BaseTestContainers {
             "mimeType"
         );
         UploadModel upload = new UploadModel(hash, metadata);
-        FileModel file = new FileModel(hash, hash.getBytes());
-        queryRepo.insertFile(upload, file);
+        queryRepo.insertFile(upload);
         assertEquals(queryRepo.getByFileHash(hash), Optional.empty());
         String uploadQuery = """
             SELECT * FROM uploads WHERE file_hash = ?
         """;
-        String fileQuery = """
-            SELECT * FROM files WHERE file_hash = ?
-        """;
         Map<String, Object> uploadRes = jdbcTemplate.queryForMap(uploadQuery, hash);
-        Map<String, Object> fileRes = jdbcTemplate.queryForMap(fileQuery, hash);
         assertEquals((String) uploadRes.get("file_hash"), hash);
         assertEquals(objectMapper.readValue(((PGobject) uploadRes.get("file_metadata")).getValue(), FileMetadataModel.class), metadata);
-        assertEquals((String) fileRes.get("file_hash"), hash);
-        assertArrayEquals((byte[]) fileRes.get("file_bytes"), hash.getBytes());
     }
 
     @Test
@@ -76,9 +75,8 @@ public class QueryRepoTest extends BaseTestContainers {
             "mimeType"
         );
         UploadModel upload = new UploadModel(hash, metadata);
-        FileModel file = new FileModel(hash, hash.getBytes());
 
-        queryRepo.insertFile(upload, file);
+        queryRepo.insertFile(upload);
 
         String taskHash = "b".repeat(64);
         String status = "PROCESSING";
@@ -108,8 +106,8 @@ public class QueryRepoTest extends BaseTestContainers {
 
     @Test
     @Transactional
-    void testDuplicateHashInsert() {
-        // Set up values to test duplication on fileHash
+    void testResetTask() {
+        // Set up values to test they are reset
         String hash = "a".repeat(64);
         FileMetadataModel metadata = new FileMetadataModel(
             "fileName",
@@ -117,9 +115,8 @@ public class QueryRepoTest extends BaseTestContainers {
             "mimeType"
         );
         UploadModel upload = new UploadModel(hash, metadata);
-        FileModel file = new FileModel(hash, hash.getBytes());
 
-        queryRepo.insertFile(upload, file);
+        queryRepo.insertFile(upload);
 
         String taskHash = "b".repeat(64);
         String status = "PROCESSING";
@@ -139,9 +136,14 @@ public class QueryRepoTest extends BaseTestContainers {
             null
         );
 
-        UUID secondTaskId = UUID.randomUUID();
+        UUID secondTask = UUID.randomUUID();
 
-        UUID returnedTaskId = queryRepo.insertTask(hash, secondTaskId);
-        assertEquals(taskId, returnedTaskId);
+        queryRepo.resetTask(hash, secondTask);
+        
+        Optional<ResultModel> resetResults = queryRepo.getByFileHash(hash);
+        ResultModel.Pending expectedResults = new ResultModel.Pending(secondTask, hash);
+
+        assertTrue(resetResults.isPresent());
+        assertEquals(expectedResults, resetResults.get());
     }
 }

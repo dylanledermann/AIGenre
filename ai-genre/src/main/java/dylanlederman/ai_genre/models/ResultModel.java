@@ -17,6 +17,7 @@ public sealed interface ResultModel
     UUID taskId();
     @NotNull @Size(min=64, max=64)
     String fileHash();
+    String status();
 
     public Set<String> validate();
 

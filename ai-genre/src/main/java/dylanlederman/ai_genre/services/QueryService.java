@@ -11,7 +11,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import dylanlederman.ai_genre.models.FileMetadataModel;
-import dylanlederman.ai_genre.models.FileModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.models.UploadModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
@@ -109,13 +108,22 @@ public class QueryService {
         }
 
         UploadModel upload = new UploadModel(hash, metadata);
-        FileModel file = new FileModel(hash, mp3_bytes);
 
-        queryRepo.insertFile(upload, file);
+        queryRepo.insertFile(upload);
         return true;
     }
 
     public UUID createTask(String fileHash, UUID taskId) {
-        return queryRepo.insertTask(fileHash, taskId);
+        Optional<ResultModel> res = queryRepo.getByFileHash(fileHash);
+        if (res.isPresent()) {
+            if (res.get().status().equals("FAILED")) {
+                queryRepo.resetTask(fileHash, taskId);
+                return taskId;
+            } else {
+                return res.get().taskId();
+            }
+        }
+        queryRepo.insertTask(fileHash, taskId);
+        return taskId;
     }
 }

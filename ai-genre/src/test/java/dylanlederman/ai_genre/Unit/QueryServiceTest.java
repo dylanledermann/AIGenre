@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -30,7 +31,7 @@ import tools.jackson.databind.ObjectMapper;
     "spring.data.redis.cache.ttl=0"
 })
 @ImportAutoConfiguration(classes={
-    ObjectMapper.class
+    JacksonAutoConfiguration.class
 })
 public class QueryServiceTest {
     @MockitoBean
