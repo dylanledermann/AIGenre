@@ -1,0 +1,20 @@
+syntax="proto3";
+
+option java_multiple_files = true;
+option java_package = "dylanlederman.ai_genre.proto";
+option java_outer_classname = "InferenceProto";
+
+service InferenceService {
+    rpc StreamFile(stream FileChunk) returns (EnqueueResponse) {}
+}
+
+message FileChunk {
+    string task_id = 1;
+    string file_hash = 2;
+    bytes chunk = 3;
+    bool is_last = 4;
+}
+
+message EnqueueResponse {
+    string message = 1;
+}

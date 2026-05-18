@@ -1,34 +1,49 @@
 import json
+import os
+from pathlib import Path
 
-from pydantic import BaseModel
+import celery
 
 from config.broker import get_broker
-from app import celery_app, app
-from repo.repo import query_uploads_by_hash, update_task_status, query_audio_results_by_sample_hash
+from celery_app import celery_app
+from repo.repo import update_task_status, query_audio_results_by_sample_hash
 from service.helpers import sample_file_bytes, get_audio_hash, run_analysis
 
-class EnqueueRequest(BaseModel):
-    taskId: str
-    fileHash: str
-
-@app.post("/enqueue")
-def enqueue_inference_task(request: EnqueueRequest):
-    inference_task.delay(request.taskId, request.fileHash)
-    return {'status': 'PROCESSING'}
-
-@celery_app.task(bind=True, name="tasks.inference_task")
-def inference_task(self, taskId: str, fileHash: str):
-    _broker = get_broker()
-    # get file bytes, log failure if DNE
-    file_bytes = query_uploads_by_hash(fileHash)
-    if file_bytes is None:
-        update_task_status(taskId, 'FAILED', error = "Task Error: file not found in database, taskId={taskId}")
-        _broker.publish("celery:results", json.dumps({
-            'taskId': taskId,
+class BaseClassWithLogging(celery.Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        # Log error and send failure result to listeners
+        update_task_status(args[0], 'FAILED', error = "Task Error: task failed, task_id={args[0]}")
+        get_broker().publish("celery:results", json.dumps({
+            'task_id': args[0],
             'status': 'FAILED',
-            'error': f"Task Error: file not found in database, taskId={taskId}"
+            'error': f"Task Error: task failed, task_id={args[0]}"
+        }))
+        # Call super
+        super().on_failure(exc, task_id, args, kwargs, einfo)
+
+@celery_app.task(
+    base=BaseClassWithLogging,
+    bind=True, 
+    name="tasks.inference_task",
+    time_limit=300,
+    retry_backoff=True,
+    retry_kwargs={'max_retires': 3},
+)
+def inference_task(self, task_id: str, file_hash: str, file_path: str):
+    _broker = get_broker()
+
+    # get file bytes, log failure if DNE
+    path = Path(file_path)
+    if not path.exists():
+        update_task_status(task_id, 'FAILED', error = "Task Error: file not found, task_id={task_id}, file_path={file_path}")
+        _broker.publish("celery:results", json.dumps({
+            'task_id': task_id,
+            'status': 'FAILED',
+            'error': f"Task Error: file not found in database, task_id={task_id}"
         }))
         return
+    file_bytes = path.read_bytes()
+    os.remove(file_path)
 
     sampled_bytes = sample_file_bytes(file_bytes)
     
@@ -39,30 +54,30 @@ def inference_task(self, taskId: str, fileHash: str):
     if audio_hash_query:
         # Update task and return
         payload = {
-            'taskId': taskId,
-            'fileHash': fileHash,
+            'task_id': task_id,
+            'file_hash': file_hash,
             **audio_hash_query
         }
         _broker.publish("celery:results", json.dumps(payload))
         return
     
     # Update status from pending to processing and start running
-    update_task_status(taskId, 'PROCESSING')
+    update_task_status(task_id, 'PROCESSING')
     _broker.publish("celery:results", json.dumps({
-        'taskId': taskId,
+        'task_id': task_id,
         'status': 'PROCESSING'
     }))
 
     genre, accuracy = run_analysis(sampled_bytes)
 
     payload = {
-        'taskId': taskId,
-        'fileHash': fileHash,
+        'task_id': task_id,
+        'file_hash': file_hash,
         'results': {
             'genre': genre,
             'accuracy': accuracy
         }
     }
 
-    update_task_status(taskId, 'COMPLETE', results = payload['results'])
+    update_task_status(task_id, 'COMPLETE', results = payload['results'])
     _broker.publish("celery:results", json.dumps(payload))

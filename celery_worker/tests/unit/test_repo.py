@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import uuid
@@ -57,10 +58,8 @@ class TestRepo:
         """Helper to populate the db with dummy values and save the values."""
         
         self.file_hash1 = "a" * 64
-        self.file_bytes1 = "a".encode()
 
         self.file_hash2 = "b" * 64
-        self.file_bytes2 = "b".encode()
 
         self.sample_hash1 = "b" * 64
         self.results1 = {
@@ -82,11 +81,6 @@ class TestRepo:
                     (self.file_hash1, self.file_hash2)
                 )
                 cursor.execute(
-                    "INSERT INTO files (file_hash, file_bytes)" \
-                    "VALUES (%s, %s), (%s, %s)",
-                    (self.file_hash1, self.file_bytes1, self.file_hash2, self.file_bytes2)
-                )
-                cursor.execute(
                     "INSERT INTO audio_results" \
                     "(task_id, sample_hash, file_hash, status, result, error)" \
                     "VALUES (%s, %s, %s, %s, %s, %s), (%s, %s, %s, %s, %s, %s)",
@@ -95,16 +89,6 @@ class TestRepo:
                         self.task_id2, self.sample_hash2, self.file_hash2, self.status2, None, self.error2
                     )
                 )
-
-    # -------------- query_uploads_by_hash --------------
-    def test_query_uploads_by_hash_exists(self):
-        """Tests query_uploads_by_hash when there is a valid value to get."""
-        self.populate_db()
-
-        false_hash = "a"*63 + "b"
-        
-        assert (self.file_bytes1,) == query_uploads_by_hash(self.file_hash1)
-        assert None == query_uploads_by_hash(false_hash)
 
     # -------------- query_audio_results_by_sample_hash --------------
     def test_query_audio_results_by_sample_hash_complete(self):

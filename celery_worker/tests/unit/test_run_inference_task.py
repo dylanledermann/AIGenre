@@ -1,4 +1,6 @@
 import json
+import os
+from pathlib import Path
 
 from tasks.inference_task import inference_task
 import pytest
@@ -12,11 +14,9 @@ def mock_broker():
 
 @pytest.fixture
 def mock_db():
-    with patch('tasks.inference_task.query_uploads_by_hash') as mock_query, \
-        patch('tasks.inference_task.query_audio_results_by_sample_hash') as mock_audio_query, \
+    with patch('tasks.inference_task.query_audio_results_by_sample_hash') as mock_audio_query, \
         patch('tasks.inference_task.update_task_status') as mock_update:
         yield {
-            'query_uploads': mock_query,
             'query_audio_results': mock_audio_query,
             'update_status': mock_update
         }
@@ -32,108 +32,73 @@ def mock_inference():
             'run': mock_run
         }
 
+@pytest.fixture
+def mock_create_file():
+    temp_path = 'file'
+    with open(temp_path, 'wb') as file:
+        file.write(temp_path.encode())
+
+    yield temp_path
+
+    if Path(temp_path).exists():
+        os.remove(temp_path)
+
 TASK_ID = 'task-123'
 FILE_HASH = 'file-hash-abc'
 
 class TestInferenceTaskFileNotFound:
 
     def test_publishes_failed_status(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = None
 
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
+        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': "some path"})
 
-        mock_db['query_uploads'].assert_called_once()
         published = json.loads(mock_broker.publish.call_args[0][1])
-        assert published['taskId'] == TASK_ID
-        assert published['status'] == 'FAILED'
 
-    def test_updates_task_status_failed(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = None
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
+        # Make sure status is updated and published, then the task ends
         mock_db['update_status'].assert_called_once_with(TASK_ID, 'FAILED', error=ANY)
-
-    def test_does_not_run_inference(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = None
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
         mock_inference['run'].assert_not_called()
+        assert published['task_id'] == TASK_ID
+        assert published['status'] == 'FAILED'
 
 
 class TestInferenceTaskCacheHit:
-    def test_publishes_cached_result(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
+    def test_publishes_cached_result(self, mock_broker, mock_db, mock_inference, mock_create_file):
         mock_db['query_audio_results'].return_value = {
             'status': 'COMPLETE',
             'results': {'genre': 'Rock', 'accuracy': 0.95}
         }
 
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
+        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': mock_create_file})
 
+        # Check published with correct values
         published = json.loads(mock_broker.publish.call_args[0][1])
-        assert published['taskId'] == TASK_ID
+        assert published['task_id'] == TASK_ID
         assert published['results']['genre'] == 'Rock'
 
-    def test_does_not_run_inference(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
-        mock_db['query_audio_results'].return_value = {
-            'status': 'COMPLETE',
-            'results': {'genre': 'Rock', 'accuracy': 0.95}
-        }
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
+        # Check inference and update not ran, since using cached values
         mock_inference['run'].assert_not_called()
-
-    def test_does_not_update_task_status(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
-        mock_db['query_audio_results'].return_value = {
-            'status': 'COMPLETE',
-            'results': {'genre': 'Rock', 'accuracy': 0.95}
-        }
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
         mock_db['update_status'].assert_not_called()
 
-
 class TestInferenceTaskFullRun:
-    def test_publishes_processing_then_complete(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
+    def test_publishes_processing_then_complete(self, mock_broker, mock_db, mock_inference, mock_create_file):
         mock_db['query_audio_results'].return_value = None
 
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
+        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': mock_create_file})
 
+        # Check broker publish
         calls = [json.loads(c[0][1]) for c in mock_broker.publish.call_args_list]
         assert calls[0]['status'] == 'PROCESSING'
         assert calls[1]['results']['genre'] == 'Rock'
         assert calls[1]['results']['accuracy'] == 0.95
 
-    def test_updates_status_processing_then_complete(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
-        mock_db['query_audio_results'].return_value = None
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
+        # Check db status update
         calls = mock_db['update_status'].call_args_list
         assert calls[0][0] == (TASK_ID, 'PROCESSING')
         assert calls[1][0] == (TASK_ID, 'COMPLETE')
 
-    def test_run_analysis_called_with_sampled_bytes(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
-        mock_db['query_audio_results'].return_value = None
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
+        # Check Inference ran
         mock_inference['run'].assert_called_once_with(b'sampled')
 
-    def test_publishes_correct_channel(self, mock_broker, mock_db, mock_inference):
-        mock_db['query_uploads'].return_value = b'file-bytes'
-        mock_db['query_audio_results'].return_value = None
-
-        inference_task.apply(kwargs={'taskId': TASK_ID, 'fileHash': FILE_HASH})
-
+        # Check publishes to the correct channel
         for call in mock_broker.publish.call_args_list:
             assert call[0][0] == 'celery:results'

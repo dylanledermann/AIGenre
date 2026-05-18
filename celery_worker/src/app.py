@@ -1,54 +1,25 @@
-import os
+from asyncio import futures
+import signal
+import grpc
 
-from celery import Celery
-from celery.signals import worker_process_init, worker_process_shutdown
+from celery_worker.src.generated_sources.proto import inference_pb2_grpc
+from celery_worker.src.grpc import InferenceService
 
-from fastapi import FastAPI
-import uvicorn
+def serve():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
+    inference_pb2_grpc.add_InferenceServiceServicer_to_server(
+        InferenceService(), server
+    )
+    server.add_insecure_port('[::]:50051')
+    server.start()
 
-from config.broker import init_broker
-from repo.repo import init_pool
-from config.settings import init_settings, get_settings
-from ai_model.model import build_model
+    def handle_shutdown(signum, frame):
+        server.stop(grace=5)  # 5 seconds to finish in-flight requests
 
-app = FastAPI()
+    signal.signal(signal.SIGTERM, handle_shutdown)
+    signal.signal(signal.SIGINT, handle_shutdown)
 
-celery_app = Celery(
-    'ai-genre-worker',
-    broker=os.getenv('BROKER_URL'),
-    include=[
-        'tasks.inference_task'
-    ]
-)
-
-celery_app.conf.update(
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='UTC',
-    enable_utc=True,
-    task_track_started=True,
-    task_time_limit=3600, # 1 hour
-    worker_prefetch_multiplier=1, # Parallel tasks
-    worker_max_tasks_per_child=50, # Number of tasks before restarting worker (prevents memory leak)
-    task_acks_late=True
-)
-
-@worker_process_init.connect
-def init_worker(**kwargs):
-
-    init_settings()
-    settings = get_settings()
-    
-    build_model(settings.model_config())
-    
-    init_pool(settings.database_config())
-
-    init_broker(settings.broker_config())
-
-@worker_process_shutdown.connect
-def shutdown_worker(**kwargs):
-    pass
+    server.wait_for_termination()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    serve()

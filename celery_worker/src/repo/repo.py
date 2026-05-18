@@ -24,16 +24,6 @@ def get_db():
                     conn.rollback()
                 print("Database Error")
                 raise
-
-def query_uploads_by_hash(file_hash: str) -> Optional[bytes]:
-    with get_db() as db:
-        with db.cursor() as cursor:
-            cursor.execute(
-                "SELECT file_bytes FROM files WHERE file_hash = %s",
-                (file_hash,)
-            )
-
-            return cursor.fetchone()
         
 def query_audio_results_by_sample_hash(sample_hash: str) -> Optional[dict]:
     with get_db() as db:
