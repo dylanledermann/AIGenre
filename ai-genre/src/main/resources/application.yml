@@ -1,17 +1,19 @@
 # Postgres DB
 spring:
+    autoconfigure:
+        exclude: org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
     application:
         name: ai-genre
     data:
         redis:
             cache:
                 host: ${REDIS_CACHE_HOST}
-                port: ${REDIS_PORT}
+                port: ${REDIS_CACHE_PORT}
                 database: 0
                 ttl: 3600000
             broker:
                 host: ${REDIS_BROKER_HOST}
-                port: ${REDIS_PORT}
+                port: ${REDIS_BROKER_PORT}
                 database: 0
                 ttl: 3600000
     datasource:
@@ -39,4 +41,4 @@ spring:
         client:
             channels:
                 celery-worker:
-                    address: 0.0.0.0:8000
+                    address: ${CELERY_HOST}

@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes: 
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - internal
+
+  cache:
+    image: redis:latest
+    volumes:
+      - cache_data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - internal
+  
+  broker:
+    image: redis:latest
+    volumes:
+      - broker_data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - internal
+
+  spring:
+    image: ai-genre-spring
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  db_data: {}
+  cache_data: {}
+  broker_data: {}
+networks:
+  internal:
+    driver: bridge
