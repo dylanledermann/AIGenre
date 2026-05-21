@@ -12,6 +12,7 @@ import static org.hamcrest.Matchers.matchesPattern;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import dylanlederman.ai_genre.config.SecurityConfig;
 import dylanlederman.ai_genre.controllers.QueryController;
 import dylanlederman.ai_genre.models.FileMetadataModel;
+import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.proto.EnqueueResponse;
 import dylanlederman.ai_genre.services.GrpcServiceStub;
 import dylanlederman.ai_genre.services.QueryService;
@@ -143,8 +145,10 @@ public class QueryControllerTest {
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.empty());
             when(queryService.createTask(eq(hash), any())).thenAnswer(invocation -> {
-                // Return second arg (taskId)
-                return invocation.getArgument(1);
+                // Get args (fileHash and taskId)
+                String fileHash = invocation.getArgument(0);
+                UUID taskId = invocation.getArgument(1);
+                return new ResultModel.Pending(taskId, fileHash);
             });
             
             FileMetadataModel metadata = new FileMetadataModel(

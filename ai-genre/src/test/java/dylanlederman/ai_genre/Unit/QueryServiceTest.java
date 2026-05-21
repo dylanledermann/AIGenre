@@ -1,10 +1,14 @@
 package dylanlederman.ai_genre.Unit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,13 +16,16 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import dylanlederman.ai_genre.models.FileMetadataModel;
 import dylanlederman.ai_genre.models.GenreResultModel;
 import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.repositories.QueryRepo;
@@ -44,6 +51,10 @@ public class QueryServiceTest {
     private ObjectMapper objectMapper;
     @Autowired
     private QueryService queryService;
+    @Value("classpath:TestFiles/sample_image.jpg")
+    Resource sampleImage;
+    @Value("classpath:TestFiles/sample_mp3.mp3")
+    Resource sampleMp3;
 
     @BeforeEach
     void setup() { 
@@ -120,5 +131,90 @@ public class QueryServiceTest {
     void testCheckHashDNE() {
         String hash = "a".repeat(64);
         assertTrue(queryService.checkHash(hash).isEmpty());
+    }
+
+    @Test
+    void testSaveFileInvalidHash() {
+        assertDoesNotThrow(() -> {
+            Path path = sampleImage.getFilePath();
+            byte[] bytes = Files.readAllBytes(path);
+            String hash = "a";
+            FileMetadataModel metadata = new FileMetadataModel(
+                path.getFileName().toString(),
+                bytes.length,
+                Files.probeContentType(path)
+            );
+
+            assertFalse(queryService.saveFile(hash, bytes, metadata));
+        });
+    }
+
+    @Test
+    void testSaveFileInvalidMimeType() {
+        assertDoesNotThrow(() -> { 
+            Path path = sampleImage.getFilePath();
+            byte[] bytes = Files.readAllBytes(path);
+            String hash = queryService.hashFile(bytes);
+            FileMetadataModel metadata = new FileMetadataModel(
+                path.getFileName().toString(),
+                bytes.length,
+                Files.probeContentType(path)
+            );
+
+            assertFalse(queryService.saveFile(hash, bytes, metadata));
+        });
+    }
+
+    @Test
+    void testSaveFileValid() {
+        assertDoesNotThrow(() -> {
+            Path path = sampleMp3.getFilePath();
+            byte[] bytes = Files.readAllBytes(path);
+            String hash = queryService.hashFile(bytes);
+            FileMetadataModel metadata = new FileMetadataModel(
+                path.getFileName().toString(),
+                bytes.length,
+                Files.probeContentType(path)
+            );
+
+            assertFalse(queryService.saveFile(hash, bytes, metadata));
+        });
+    }
+
+
+    @Test
+    void testCreateTaskFailed() {
+        String fileHash = "a".repeat(64);
+        UUID taskId = UUID.randomUUID();
+        ResultModel failedResult = new ResultModel.Failed(taskId, fileHash, "Error");
+        when(queryRepo.getByFileHash(fileHash)).thenReturn(Optional.of(failedResult));
+
+        ResultModel actual = queryService.createTask(fileHash, taskId);
+        ResultModel expected = new ResultModel.Pending(taskId, fileHash);
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void testCreateTaskDNE() {
+        String fileHash = "a".repeat(64);
+        UUID taskId = UUID.randomUUID();
+        when(queryRepo.getByFileHash(fileHash)).thenReturn(Optional.empty());
+
+        ResultModel actual = queryService.createTask(fileHash, taskId);
+        ResultModel expected = new ResultModel.Pending(taskId, fileHash);
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void testCreateTaskComplete() {
+        String fileHash = "a".repeat(64);
+        UUID taskId = UUID.randomUUID();
+        GenreResultModel result = new GenreResultModel("genre", "accuracy");
+        ResultModel completeResult = new ResultModel.Complete(taskId, fileHash, result);
+        when(queryRepo.getByFileHash(fileHash)).thenReturn(Optional.of(completeResult));
+
+        ResultModel actual = queryService.createTask(fileHash, taskId);
+        assertEquals(completeResult, actual);
+        verify(redisTemplate).opsForValue();
     }
 }

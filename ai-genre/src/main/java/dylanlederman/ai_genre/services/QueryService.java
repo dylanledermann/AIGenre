@@ -79,11 +79,7 @@ public class QueryService {
 
         // Only cache complete results (They should not change)
         if (result instanceof ResultModel.Complete) {
-            try {
-                redisTemplate.opsForValue().set("result:" + hash, objectMapper.writeValueAsString(result), ttl);
-            } catch (Exception e) {
-                log.error("Failed to cache result fileHash={}", hash, e);
-            }
+            cacheResult(result);
         }
 
         return Optional.of(resultModelToMap(result));
@@ -96,6 +92,14 @@ public class QueryService {
             case ResultModel.Complete r: yield Map.of("status", r.status(), "result", r.result());
             case ResultModel.Failed r: yield Map.of("status", r.status(), "error", r.error());
         };
+    }
+
+    private void cacheResult(ResultModel result) {
+        try {
+            redisTemplate.opsForValue().set("result:" + result.fileHash(), objectMapper.writeValueAsString(result), ttl);
+        } catch (Exception e) {
+            log.error("Failed to cache result fileHash={}", result.fileHash(), e);
+        }
     }
 
     public boolean saveFile(String hash, byte[] mp3_bytes, FileMetadataModel metadata) {
@@ -113,17 +117,17 @@ public class QueryService {
         return true;
     }
 
-    public UUID createTask(String fileHash, UUID taskId) {
+    public ResultModel createTask(String fileHash, UUID taskId) {
         Optional<ResultModel> res = queryRepo.getByFileHash(fileHash);
         if (res.isPresent()) {
-            if (res.get().status().equals("FAILED")) {
-                queryRepo.resetTask(fileHash, taskId);
-                return taskId;
-            } else {
-                return res.get().taskId();
+            ResultModel result = res.get();
+            if (result instanceof ResultModel.Failed) queryRepo.resetTask(fileHash, taskId);
+            else {
+                if (result instanceof ResultModel.Complete) cacheResult(result);
+                return result;
             }
         }
         queryRepo.insertTask(fileHash, taskId);
-        return taskId;
+        return new ResultModel.Pending(taskId, fileHash);
     }
 }

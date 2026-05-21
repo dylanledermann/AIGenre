@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import dylanlederman.ai_genre.models.FileMetadataModel;
+import dylanlederman.ai_genre.models.ResultModel;
 import dylanlederman.ai_genre.services.GrpcServiceStub;
 import dylanlederman.ai_genre.services.QueryService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,7 @@ public class QueryController {
         if (file.isEmpty() ||
                 file.getContentType() == null ||
                 !file.getContentType()
-                        .matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")) {
+                        .matches("^audio\\/((x-)?mp3|(x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")) {
             return ResponseEntity.badRequest().body(
                     Map.of(
                             "error",
@@ -56,15 +57,15 @@ public class QueryController {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid file"));
         }
         UUID taskId = UUID.randomUUID();
-        UUID returnedTaskId = queryService.createTask(fileHash, taskId);
+        ResultModel returnedTask = queryService.createTask(fileHash, taskId);
 
-        if (!returnedTaskId.equals(taskId)) {
-            return ResponseEntity.accepted().body(Map.of("taskId", returnedTaskId));
+        if (!returnedTask.taskId().equals(taskId)) {
+            return ResponseEntity.accepted().body(returnedTask);
         }
 
         try {
             grpcServiceStub.buildTaskStub(taskId.toString(), fileHash, fileBytes).get();
-            return ResponseEntity.accepted().body(Map.of("taskId", taskId));
+            return ResponseEntity.accepted().body(returnedTask);
         } catch (Exception e) {
             log.error("Error occurred building task stub: ", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal Server Error"));
