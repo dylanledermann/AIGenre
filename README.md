@@ -5,16 +5,18 @@ This repo tests song classifying by running spectrograms and lyrics through CNNs
 ## Getting Started
 To start, create a python environment (I used conda) and install the required modules.
 The current python that conda allows at the time of creating this is 3.14.
+
+***Disclaimer*** The requirement.txt in the home directory, `./requirements.txt`, contains only the packages for the .ipynb model trainings. The application (celery and grpc) packages can be found in the `./celery_worker` directory with the exception of torch.
+The torch download instructions are below.
 ```bash
 conda create -n ai-genre python=3.14
 pip install -r requirements.txt
 ```
-This project uses CUDA 12.6 for GPU processing. 
-If you have CUDA, but a different version, uninstall and reinstall the correct torch version from [here](https://pytorch.org/get-started/locally/).
-If you do not have CUDA and can not download it, run the following to change the torch and torchvision to cpu:
+### Torch
+PyTorch is not included in the requirements.txt, since there are difference versions depending on if you are using CUDA, the CUDA versions, etc.
+If you have an Nvidia GPU, you can download PyTorch with CUDA from [here](https://pytorch.org/get-started/locally/).
+Otherwise, you can use the PyTorch with CPU:
 ```bash
-pip uninstall torch torchvision torchaudio
-pip cache purge
 pip install torch torchvision torchaudio
 ```
 You can check the result with the following command: `python -c "import torch; print(torch.__version__)"`, which should output `{torch_version}+cpu`
