@@ -4,16 +4,16 @@ from pathlib import Path
 
 import celery
 
-from config.broker import get_broker
-from celery_app import celery_app
-from repo.repo import update_task_status, query_audio_results_by_sample_hash
-from service.helpers import sample_file_bytes, get_audio_hash, run_analysis
+from src.config.backend import get_backend
+from src.celery_app import celery_app
+from src.repo.repo import update_task_status, query_audio_results_by_sample_hash
+from src.service.helpers import sample_file_bytes, get_audio_hash, run_analysis
 
 class BaseClassWithLogging(celery.Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         # Log error and send failure result to listeners
         update_task_status(args[0], 'FAILED', error = "Task Error: task failed, task_id={args[0]}")
-        get_broker().publish("celery:results", json.dumps({
+        get_backend().publish("celery:results", json.dumps({
             'task_id': args[0],
             'status': 'FAILED',
             'error': f"Task Error: task failed, task_id={args[0]}"
@@ -24,13 +24,13 @@ class BaseClassWithLogging(celery.Task):
 @celery_app.task(
     base=BaseClassWithLogging,
     bind=True, 
-    name="tasks.inference_task",
+    name="inference_task",
     time_limit=300,
     retry_backoff=True,
     retry_kwargs={'max_retires': 3},
 )
 def inference_task(self, task_id: str, file_hash: str, file_path: str):
-    _broker = get_broker()
+    _broker = get_backend()
 
     # get file bytes, log failure if DNE
     path = Path(file_path)

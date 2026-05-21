@@ -1,6 +1,6 @@
 import pytest
 import os
-from config.settings import init_settings, get_settings
+from src.config.settings import init_settings, get_settings
 
 @pytest.fixture
 def env_file():
@@ -46,5 +46,5 @@ class TestSettings:
         assert settings.db_pass == 'password'
 
         # Broker
-        assert settings.broker_host == 'localhost'
-        assert settings.broker_port == 6379
+        assert settings.backend_host == 'localhost'
+        assert settings.backend_port == 6379

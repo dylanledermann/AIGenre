@@ -1,3 +1,14 @@
-celery
+pytest
+testcontainers[postgres]
+grpcio
+grpcio-tools
+protobuf
+psycopg
+psycopg-binary
+psycopg-pool
 redis
-json
+fakeredis
+dotenv
+pytest
+librosa
+celery

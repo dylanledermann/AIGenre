@@ -2,20 +2,20 @@ import json
 import os
 from pathlib import Path
 
-from tasks.inference_task import inference_task
+from src.tasks.inference_task import inference_task
 import pytest
 from unittest.mock import ANY, MagicMock, patch
 
 @pytest.fixture
 def mock_broker():
     broker = MagicMock()
-    with patch('tasks.inference_task.get_broker', return_value=broker):
+    with patch('src.tasks.inference_task.get_backend', return_value=broker):
         yield broker
 
 @pytest.fixture
 def mock_db():
-    with patch('tasks.inference_task.query_audio_results_by_sample_hash') as mock_audio_query, \
-        patch('tasks.inference_task.update_task_status') as mock_update:
+    with patch('src.tasks.inference_task.query_audio_results_by_sample_hash') as mock_audio_query, \
+        patch('src.tasks.inference_task.update_task_status') as mock_update:
         yield {
             'query_audio_results': mock_audio_query,
             'update_status': mock_update
@@ -23,9 +23,9 @@ def mock_db():
 
 @pytest.fixture
 def mock_inference():
-    with patch('tasks.inference_task.sample_file_bytes', return_value=b'sampled') as mock_sample, \
-        patch('tasks.inference_task.get_audio_hash', return_value='audio-hash-abc') as mock_hash, \
-        patch('tasks.inference_task.run_analysis', return_value=('Rock', 0.95)) as mock_run:
+    with patch('src.tasks.inference_task.sample_file_bytes', return_value=b'sampled') as mock_sample, \
+        patch('src.tasks.inference_task.get_audio_hash', return_value='audio-hash-abc') as mock_hash, \
+        patch('src.tasks.inference_task.run_analysis', return_value=('Rock', 0.95)) as mock_run:
         yield {
             'sample': mock_sample,
             'hash': mock_hash,

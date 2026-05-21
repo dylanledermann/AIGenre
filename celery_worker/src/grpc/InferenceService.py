@@ -1,5 +1,5 @@
-from celery_worker.src.generated_sources.proto import inference_pb2, inference_pb2_grpc
-from celery_worker.src.tasks.inference_task import inference_task
+from src.generated_sources import inference_pb2, inference_pb2_grpc
+from src.celery_app import celery_app
 
 
 class InferenceService(inference_pb2_grpc.InferenceServiceServicer):
@@ -20,6 +20,7 @@ class InferenceService(inference_pb2_grpc.InferenceServiceServicer):
         with open(temp_path, 'wb') as temp_file:
             temp_file.write(file_bytes)
 
-        inference_task.delay(task_id, file_hash, temp_file)
+        # Apply async task with the given task_id
+        celery_app.send_task(name="inference_task", args=(task_id, file_hash, temp_file), task_id=task_id)
 
         return inference_pb2.EnqueueResponse(message='PENDING')

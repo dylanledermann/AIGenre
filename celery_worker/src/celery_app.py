@@ -3,16 +3,11 @@ import os
 from celery import Celery
 from celery.signals import worker_process_init, worker_process_shutdown
 
-from config.broker import init_broker
-from repo.repo import init_pool
-from config.settings import init_settings, get_settings
-from ai_model.model import build_model
-
 celery_app = Celery(
     'ai-genre-worker',
     broker=os.getenv('BROKER_URL'),
     include=[
-        'tasks.inference_task'
+        'src.tasks.inference_task'
     ]
 )
 
@@ -31,6 +26,11 @@ celery_app.conf.update(
 
 @worker_process_init.connect
 def init_worker(**kwargs):
+    # Lazy imports to not require them when just using celery_app
+    from src.config.backend import init_backend
+    from src.repo.repo import init_pool
+    from src.config.settings import init_settings, get_settings
+    from src.ai_model.model import build_model
 
     init_settings()
     settings = get_settings()
@@ -39,7 +39,7 @@ def init_worker(**kwargs):
     
     init_pool(settings.database_config())
 
-    init_broker(settings.broker_config())
+    init_backend(settings.backend_config())
 
 @worker_process_shutdown.connect
 def shutdown_worker(**kwargs):

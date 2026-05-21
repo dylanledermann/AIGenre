@@ -1,0 +1,23 @@
+FROM python:3.14.4-slim
+
+WORKDIR /app
+
+# Create user group
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 appuser
+
+# Install system dependencies (needed for psycopg)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libc-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install packages
+COPY ./requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+USER appuser
+
+ENTRYPOINT [ "python", "-m", "src.app" ]

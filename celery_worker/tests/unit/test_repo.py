@@ -4,8 +4,8 @@ from pathlib import Path
 import uuid
 
 import pytest
-from config.settings import get_settings, init_settings
-from repo.repo import *
+from src.config.settings import get_settings, init_settings
+from src.repo.repo import *
 from testcontainers.postgres import PostgresContainer
 
 postgres = PostgresContainer("postgres:16-alpine")

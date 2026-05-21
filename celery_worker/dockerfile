@@ -1,0 +1,27 @@
+FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04
+
+WORKDIR /app
+
+# Create user group
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 appuser
+
+# Install system dependencies (needed for psycopg)
+RUN apt-get update && apt-get install -y python3 python3-pip
+
+# Copy and install python requirements
+COPY ./requirements.txt .
+
+# Install modules in own stage
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+
+USER appuser
+
+# Predownload resnet model on appuser
+RUN python3 -c "import torchvision.models as m; m.resnet18(weights=m.ResNet18_Weights.DEFAULT)"
+
+COPY . .
+
+ENTRYPOINT ["python3", "-m", "celery", "-A", "src.celery_app", "worker", "--concurrency", "1"]

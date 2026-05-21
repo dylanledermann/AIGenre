@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - internal
+    
+  celery-broker:
+    image: rabbitmq:3-management
+    volumes:
+      - celery_broker:/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping && rabbitmq-diagnostics check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - celery
+
+  celery-worker:
+    image: ai-genre-celery
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      celery-broker:
+        condition: service_healthy
+    restart: always
+    networks:
+      - internal
+      - celery
+
+  grpc-server:
+    image: ai-genre-grpc
+    env_file: .env
+    restart: always
+    depends_on:
+      celery-worker:
+        condition: service_started
+    networks:
+      - internal
+volumes:
+  celery_broker: {}
+  db_data: {}
+
+networks:
+  internal:
+    driver: bridge
+  celery:
+    driver: bridge

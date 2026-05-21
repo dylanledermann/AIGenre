@@ -8,8 +8,8 @@ import io
 import soundfile as sf
 import numpy as np
 
-from config.settings import init_settings, get_settings
-from service.helpers import *
+from src.config.settings import init_settings, get_settings
+from src.service.helpers import *
 
 def make_audio_bytes(duration: float, sample_rate: int = 22050, frequency: float = 440.0) -> bytes:
     """fixture to make a sin wave for the given duration with sample_rate*duration values"""

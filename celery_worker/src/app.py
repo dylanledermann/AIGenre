@@ -1,9 +1,9 @@
-from asyncio import futures
+from concurrent import futures
 import signal
 import grpc
 
-from celery_worker.src.generated_sources.proto import inference_pb2_grpc
-from celery_worker.src.grpc import InferenceService
+from src.generated_sources import inference_pb2_grpc
+from src.grpc.InferenceService import InferenceService
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))

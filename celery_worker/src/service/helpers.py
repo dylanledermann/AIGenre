@@ -1,3 +1,5 @@
+from typing import Callable
+
 import librosa
 
 import hashlib
@@ -7,8 +9,8 @@ import torch
 import numpy as np
 from torchvision import transforms
 
-from config.settings import get_settings
-from ai_model.model import get_model
+from src.config.settings import get_settings
+from src.ai_model.model import get_model
 
 def sample_file_bytes(file_bytes: bytes) -> np.ndarray:
     spect_config = get_settings().spectrogram_config()
@@ -32,7 +34,7 @@ def get_audio_hash(audio: np.ndarray) -> str:
     hash_object = hashlib.sha256(audio.tobytes())
     return hash_object.hexdigest()
 
-def calc_spectrogram(audio_array: np.ndarray, func: function, config: dict) -> np.ndarray:
+def calc_spectrogram(audio_array: np.ndarray, func: Callable, config: dict) -> np.ndarray:
     spect = func(y=audio_array, **config)
 
     log_spect = librosa.amplitude_to_db(np.abs(spect), ref=np.max)

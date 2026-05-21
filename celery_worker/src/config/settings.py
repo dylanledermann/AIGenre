@@ -41,10 +41,10 @@ class Settings:
         self.min_size = int(os.getenv('MIN_POOL', '1'))
         self.max_size = int(os.getenv('MAX_POOL', '5'))
 
-        # Broker
-        self.broker_host = os.getenv('BROKER_HOST')
-        self.broker_port = int(os.getenv('BROKER_PORT'))
-        self.broker_db = os.getenv('BROKER_DB', '0')
+        # Backend
+        self.backend_host = os.getenv('BACKEND_HOST')
+        self.backend_port = int(os.getenv('BACKEND_PORT'))
+        self.backend_db = os.getenv('BACKEND_DB', '0')
 
     def model_config(self) -> dict[str, str | int | float]:
         return {
@@ -87,9 +87,9 @@ class Settings:
             'max_size': self.max_size
         }
     
-    def broker_config(self) -> dict[str, str]:
+    def backend_config(self) -> dict[str, str]:
         return {
-            'host': self.broker_host,
-            'port': self.broker_port,
-            'db': self.broker_db,
+            'host': self.backend_host,
+            'port': self.backend_port,
+            'db': self.backend_db,
         }
