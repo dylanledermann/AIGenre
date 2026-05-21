@@ -1,0 +1,310 @@
+/* ListItem.module.css
+   Ties into index.css tokens (var() references match the root stylesheet)
+   Status colours scoped via data-status attribute
+   ------------------------------------------------------------------ */
+
+/* ── Status colour tokens ──────────────────────────────────── */
+/* ── Status colour tokens — light mode ────────────────────── */
+.item[data-status='CONNECTING'] {
+  --status-color: #b45309; /* amber-700 — warm but readable */
+  --status-bg: #fffbeb;
+  --status-border: #d97706;
+  --status-track: #fde68a;
+}
+
+.item[data-status='PENDING'] {
+  --status-color: #65a30d; /* lime-600 — yellow-green */
+  --status-bg: #f7fee7;
+  --status-border: #84cc16;
+  --status-track: #d9f99d;
+}
+
+.item[data-status='PROCESSING'] {
+  --status-color: #16a34a; /* green-600 — mid green */
+  --status-bg: #f0fdf4;
+  --status-border: #4ade80;
+  --status-track: #bbf7d0;
+}
+
+.item[data-status='COMPLETE'] {
+  --status-color: var(--color-success); /* full green */
+  --status-bg: var(--color-success-bg);
+  --status-border: var(--color-accent);
+  --status-track: #b8ecb8;
+}
+
+.item[data-status='FAILED'] {
+  --status-color: var(--color-error);
+  --status-bg: var(--color-error-bg);
+  --status-border: #fca5a5;
+  --status-track: #fecaca;
+}
+
+/* ── Dark mode overrides ───────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  .item[data-status='CONNECTING'] {
+    --status-color: #fbbf24; /* amber-400 — bright enough on dark bg */
+    --status-bg: rgba(251, 191, 36, 0.08);
+    --status-border: rgba(251, 191, 36, 0.25);
+    --status-track: rgba(251, 191, 36, 0.15);
+  }
+
+  .item[data-status='PENDING'] {
+    --status-color: #a3e635; /* lime-400 */
+    --status-bg: rgba(163, 230, 53, 0.08);
+    --status-border: rgba(163, 230, 53, 0.25);
+    --status-track: rgba(163, 230, 53, 0.15);
+  }
+
+  .item[data-status='PROCESSING'] {
+    --status-color: #4ade80; /* green-400 */
+    --status-bg: var(--color-accent-subtle);
+    --status-border: rgba(74, 222, 128, 0.25);
+    --status-track: rgba(74, 222, 128, 0.15);
+  }
+
+  .item[data-status='COMPLETE'] {
+    --status-color: var(--color-accent);
+    --status-bg: rgba(74, 222, 128, 0.08);
+    --status-border: rgba(82, 192, 82, 0.3);
+    --status-track: rgba(82, 192, 82, 0.15);
+  }
+
+  .item[data-status='FAILED'] {
+    --status-color: var(--color-error);
+    --status-bg: var(--color-error-bg);
+    --status-border: rgba(229, 115, 115, 0.3);
+    --status-track: rgba(229, 115, 115, 0.15);
+  }
+}
+
+/* Manual dark class override (matches index.css pattern) */
+:global(.dark) .item[data-status='CONNECTING'] {
+  --status-color: #fbbf24;
+  --status-bg: rgba(251, 191, 36, 0.08);
+  --status-border: rgba(251, 191, 36, 0.25);
+  --status-track: rgba(251, 191, 36, 0.15);
+}
+
+:global(.dark) .item[data-status='PENDING'] {
+  --status-color: #a3e635;
+  --status-bg: rgba(163, 230, 53, 0.08);
+  --status-border: rgba(163, 230, 53, 0.25);
+  --status-track: rgba(163, 230, 53, 0.15);
+}
+
+:global(.dark) .item[data-status='PROCESSING'] {
+  --status-color: #4ade80;
+  --status-bg: rgba(74, 222, 128, 0.08);
+  --status-border: rgba(74, 222, 128, 0.25);
+  --status-track: rgba(74, 222, 128, 0.15);
+}
+
+:global(.dark) .item[data-status='COMPLETE'] {
+  --status-color: var(--color-accent);
+  --status-bg: var(--color-accent-subtle);
+  --status-border: rgba(82, 192, 82, 0.3);
+  --status-track: rgba(82, 192, 82, 0.15);
+}
+
+:global(.dark) .item[data-status='FAILED'] {
+  --status-color: var(--color-error);
+  --status-bg: var(--color-error-bg);
+  --status-border: rgba(229, 115, 115, 0.3);
+  --status-track: rgba(229, 115, 115, 0.15);
+}
+
+/* ── Item card ─────────────────────────────────────────────── */
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--status-bg, var(--color-bg));
+  border: 1px solid var(--status-border, var(--color-border));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+  transition:
+    box-shadow var(--duration-base) var(--ease-default),
+    transform var(--duration-fast) var(--ease-spring);
+  animation: fadeSlideIn var(--duration-slow) var(--ease-spring) both;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Row 1: header ─────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.taskId {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+  letter-spacing: var(--tracking-wide);
+}
+
+.taskIdValue {
+  color: var(--color-text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Status badge — top right */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--color-bg);
+  border: 1px solid var(--status-border, var(--color-border));
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--status-color, var(--color-text-secondary));
+  letter-spacing: var(--tracking-wider);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background-color: var(--status-color, var(--color-text-muted));
+  flex-shrink: 0;
+}
+
+/* Pulse dot on active statuses */
+.item[data-status='CONNECTING'] .dot,
+.item[data-status='PENDING'] .dot,
+.item[data-status='PROCESSING'] .dot {
+  animation: pulse 1.4s var(--ease-default) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.75);
+  }
+}
+
+/* ── Row 2: result / error ─────────────────────────────────── */
+.body {
+  min-height: 1.25rem; /* reserve space even when empty */
+}
+
+.result {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-error);
+}
+
+/* ── Row 3: progress bar + status label ────────────────────── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end; /* pushes bar+label to the right */
+  gap: var(--space-3);
+}
+
+/* The bar grows to fill available space from the right */
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.progressTrack {
+  flex: 1;
+  max-width: 240px;
+  height: 8px;
+  background-color: var(--status-track, var(--color-bg-muted));
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--status-color, var(--color-accent));
+  border-radius: var(--radius-full);
+  transition: width 600ms var(--ease-out);
+}
+
+/* Shimmer on in-progress statuses */
+.item[data-status='CONNECTING'] .progressFill,
+.item[data-status='PENDING'] .progressFill,
+.item[data-status='PROCESSING'] .progressFill {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+
+/* Status label next to bar */
+.progressStatus {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--status-color, var(--color-text-muted));
+  letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+  min-width: 6rem; /* prevents layout shift as label text changes */
+  text-align: left;
+}
+
+/* ── Mobile ────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .item {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .progressTrack {
+    max-width: 100%;
+  }
+}
