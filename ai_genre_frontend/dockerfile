@@ -1,0 +1,25 @@
+# Build stage
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+# Serve stage
+FROM nginx:stable-alpine
+
+# Create user group
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 appuser
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+USER appuser
+
+ENTRYPOINT ["nginx", "-g", "daemon off;"]
