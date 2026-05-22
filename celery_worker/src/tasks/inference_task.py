@@ -7,7 +7,7 @@ import celery
 from src.config.backend import get_backend
 from src.celery_app import celery_app
 from src.repo.repo import update_task_status, query_audio_results_by_sample_hash
-from src.service.helpers import sample_file_bytes, get_audio_hash, run_analysis
+from src.service.helpers import mp3_to_spectrogram, sample_file_bytes, get_audio_hash, run_analysis
 
 class BaseClassWithLogging(celery.Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
@@ -30,13 +30,13 @@ class BaseClassWithLogging(celery.Task):
     retry_kwargs={'max_retires': 3},
 )
 def inference_task(self, task_id: str, file_hash: str, file_path: str):
-    _broker = get_backend()
+    _backend = get_backend()
 
     # get file bytes, log failure if DNE
     path = Path(file_path)
     if not path.exists():
         update_task_status(task_id, 'FAILED', error = "Task Error: file not found, task_id={task_id}, file_path={file_path}")
-        _broker.publish("celery:results", json.dumps({
+        _backend.publish("celery:results", json.dumps({
             'task_id': task_id,
             'status': 'FAILED',
             'error': f"Task Error: file not found in database, task_id={task_id}"
@@ -58,17 +58,17 @@ def inference_task(self, task_id: str, file_hash: str, file_path: str):
             'file_hash': file_hash,
             **audio_hash_query
         }
-        _broker.publish("celery:results", json.dumps(payload))
+        _backend.publish("celery:results", json.dumps(payload))
         return
     
     # Update status from pending to processing and start running
     update_task_status(task_id, 'PROCESSING')
-    _broker.publish("celery:results", json.dumps({
+    _backend.publish("celery:results", json.dumps({
         'task_id': task_id,
         'status': 'PROCESSING'
     }))
-
-    genre, accuracy = run_analysis(sampled_bytes)
+    spectrogram = mp3_to_spectrogram(sampled_bytes)
+    genre, accuracy = run_analysis(spectrogram)
 
     payload = {
         'task_id': task_id,
@@ -80,4 +80,4 @@ def inference_task(self, task_id: str, file_hash: str, file_path: str):
     }
 
     update_task_status(task_id, 'COMPLETE', results = payload['results'])
-    _broker.publish("celery:results", json.dumps(payload))
+    _backend.publish("celery:results", json.dumps(payload))

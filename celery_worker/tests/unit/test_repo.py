@@ -1,51 +1,8 @@
 import json
-import os
-from pathlib import Path
 import uuid
 
 import pytest
-from src.config.settings import get_settings, init_settings
 from src.repo.repo import *
-from testcontainers.postgres import PostgresContainer
-
-postgres = PostgresContainer("postgres:16-alpine")
-
-@pytest.fixture(scope="module", autouse=True)
-def setup():
-    # Set initial db script
-    init_script = Path(__file__).parent / "db.sql"
-    postgres.with_volume_mapping(
-        host=str(init_script),
-        container=f"/docker-entrypoint-initdb.d/{init_script.name}"
-    )
-
-    postgres.start()
-    sample_env_path = './test.env'
-    with open(sample_env_path, 'w') as f:
-        f.write(f"""
-            MODEL_PATH=./ai-model/without_lyrics_cnn_weights.pth
-                
-            # Database
-            DB_HOST={postgres.get_container_host_ip()}
-            DB_PORT={postgres.get_exposed_port(5432)}
-            DB_NAME={postgres.dbname}
-            DB_USERNAME={postgres.username}
-            DB_PASSWORD={postgres.password}
-
-            # Broker
-            BROKER_HOST=localhost
-            BROKER_PORT=6379
-        """)
-
-    # Initialize settings and pool
-    init_settings(sample_env_path)
-    settings = get_settings()
-    init_pool(settings.database_config())
-
-    yield
-
-    os.remove(sample_env_path)
-    postgres.stop()
 
 @pytest.fixture(scope="function", autouse=True)
 def reset_db():

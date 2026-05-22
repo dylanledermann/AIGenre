@@ -22,7 +22,7 @@ def get_db():
             except Exception as e:
                 if not conn.autocommit:
                     conn.rollback()
-                print("Database Error")
+                print("Database Error", e)
                 raise
         
 def query_audio_results_by_sample_hash(sample_hash: str) -> Optional[dict]:

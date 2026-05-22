@@ -8,13 +8,12 @@ _settings = None
 def get_settings():
     return _settings
 
-def init_settings(path: Optional[str] = '.env'):
+def init_settings():
     global _settings
-    _settings = Settings(path)
+    _settings = Settings()
 
 class Settings:
-    def __init__(self, path: str):
-        load_dotenv(path, override=True)
+    def __init__(self):
 
         # Model
         self.model_path = os.getenv('MODEL_PATH')

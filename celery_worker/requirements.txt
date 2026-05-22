@@ -1,5 +1,6 @@
 pytest
 testcontainers[postgres]
+testcontainers[rabbitmq]
 grpcio
 grpcio-tools
 protobuf
@@ -12,3 +13,5 @@ dotenv
 pytest
 librosa
 celery
+pytest-grpc
+python-magic

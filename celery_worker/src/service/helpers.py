@@ -58,14 +58,14 @@ def mp3_to_spectrogram(audio: np.ndarray) -> np.ndarray:
     mel_spect = np.pad(mel_spect, ((0, max(0, -diff)), (0, 0)))
     cqt_spect = np.pad(cqt_spect, ((0, max(0, diff)), (0, 0)))
 
-    spectrograms = np.stack([mel_spect.astype(np.float32), cqt_spect.astype(np.float32)])
+    spectrograms = np.stack([mel_spect.astype(np.float32), cqt_spect.astype(np.float32)], axis=0)
 
     return spectrograms
 
-def run_analysis(spectrogram: np.ndarray) -> tuple[int, torch.float32]:
+def run_analysis(spectrogram: np.ndarray) -> tuple[str, str]:
     get_model().eval()
 
-    torch_input = torch.tensor(spectrogram, dtype=torch.float32)
+    torch_input = torch.tensor(spectrogram, dtype=torch.float32, device = 'cuda' if torch.cuda.is_available() else 'cpu').unsqueeze(0)
 
     transform = transforms.Compose([
         transforms.Normalize(
@@ -73,13 +73,10 @@ def run_analysis(spectrogram: np.ndarray) -> tuple[int, torch.float32]:
             std=[0.17030458340764293, 0.29191792208277895]
         )
     ])
-
     normalized_input = transform(torch_input)
 
     out = get_model()(normalized_input)
 
     probs = torch.softmax(out, -1)
-
     genre, accuracy = torch.argmax(probs), torch.max(probs)
-
-    return genre, accuracy
+    return str(genre.item()), str(accuracy.item())

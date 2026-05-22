@@ -16,9 +16,14 @@ def env_file():
             DB_USERNAME=postgres
             DB_PASSWORD=password
 
+            # Backend
+            BACKEND_HOST=redis://localhost
+            BACKEND_PORT=6379
+            BACKEND_DB=0
+
+
             # Broker
-            BROKER_HOST=localhost
-            BROKER_PORT=6379
+            BROKER_URL=amqp://guest:guest@celery-broker:5672//
         """)
 
     yield sample_env_path
