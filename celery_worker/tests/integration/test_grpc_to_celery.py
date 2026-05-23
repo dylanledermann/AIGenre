@@ -77,7 +77,6 @@ class TestGrpcToCelery:
         self, 
         grpc_stub, 
         celery_worker, 
-        mock_backend, 
         init_redis_sub,
         messages,
     ):

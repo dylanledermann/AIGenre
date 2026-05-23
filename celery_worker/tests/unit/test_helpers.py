@@ -1,15 +1,17 @@
 from math import ceil
-import os
 import re
 
-import pytest
-
 import io
+import pytest
 import soundfile as sf
 import numpy as np
 
 from src.config.settings import init_settings, get_settings
 from src.service.helpers import *
+
+@pytest.fixture(scope='module', autouse=True)
+def start_settings():
+    init_settings()
 
 def make_audio_bytes(duration: float, sample_rate: int = 22050, frequency: float = 440.0) -> bytes:
     """fixture to make a sin wave for the given duration with sample_rate*duration values"""
@@ -24,31 +26,6 @@ def make_silent_audio_bytes(duration: float, sample_rate: int = 22050, frequency
     buffer = io.BytesIO()
     sf.write(buffer, samples, sample_rate, format='wav')
     return buffer.getvalue()
-
-@pytest.fixture(autouse=True)
-def env_file():
-    sample_env_path = './test.env'
-    with open(sample_env_path, 'w') as f:
-        f.write("""
-            MODEL_PATH=./ai-model/without_lyrics_cnn_weights.pth
-                
-            # Database
-            DB_HOST=localhost
-            DB_PORT=5432
-            DB_NAME=postgres
-            DB_USERNAME=postgres
-            DB_PASSWORD=password
-
-            # Broker
-            BROKER_HOST=localhost
-            BROKER_PORT=6379
-        """)
-
-    init_settings(sample_env_path)
-
-    yield
-
-    os.remove(sample_env_path)
 
 class TestHelpers:
         

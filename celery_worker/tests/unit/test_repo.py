@@ -2,7 +2,14 @@ import json
 import uuid
 
 import pytest
+from celery_worker.src.config.settings import init_settings, get_settings
 from src.repo.repo import *
+
+@pytest.fixture(scope='module', autouse=True)
+def start_settings():
+    init_settings()
+    init_pool(get_settings().database_config())
+    print(get_settings)
 
 @pytest.fixture(scope="function", autouse=True)
 def reset_db():

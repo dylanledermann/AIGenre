@@ -2,9 +2,21 @@ import json
 import os
 from pathlib import Path
 
+from celery_worker.src.config.settings import init_settings
 from src.tasks.inference_task import inference_task
 import pytest
 from unittest.mock import ANY, MagicMock, patch
+import numpy as np
+
+# Constants
+FILE_BYTES_INPUT=b'sampled'
+RUN_INPUT=np.array([1, 2, 3])
+TASK_ID = 'task-123'
+FILE_HASH = 'file-hash-abc'
+
+@pytest.fixture(scope='module', autouse=True)
+def start_settings():
+    init_settings()
 
 @pytest.fixture
 def mock_broker():
@@ -23,13 +35,15 @@ def mock_db():
 
 @pytest.fixture
 def mock_inference():
-    with patch('src.tasks.inference_task.sample_file_bytes', return_value=b'sampled') as mock_sample, \
+    with patch('src.tasks.inference_task.sample_file_bytes', return_value=FILE_BYTES_INPUT) as mock_sample, \
         patch('src.tasks.inference_task.get_audio_hash', return_value='audio-hash-abc') as mock_hash, \
-        patch('src.tasks.inference_task.run_analysis', return_value=('Rock', 0.95)) as mock_run:
+        patch('src.tasks.inference_task.run_analysis', return_value=('Rock', '0.95')) as mock_run, \
+        patch('src.tasks.inference_task.mp3_to_spectrogram', return_value=(RUN_INPUT)) as mock_spect:
         yield {
             'sample': mock_sample,
             'hash': mock_hash,
-            'run': mock_run
+            'run': mock_run,
+            'spect': mock_spect
         }
 
 @pytest.fixture
@@ -42,9 +56,6 @@ def mock_create_file():
 
     if Path(temp_path).exists():
         os.remove(temp_path)
-
-TASK_ID = 'task-123'
-FILE_HASH = 'file-hash-abc'
 
 class TestInferenceTaskFileNotFound:
 
@@ -65,7 +76,7 @@ class TestInferenceTaskCacheHit:
     def test_publishes_cached_result(self, mock_broker, mock_db, mock_inference, mock_create_file):
         mock_db['query_audio_results'].return_value = {
             'status': 'COMPLETE',
-            'results': {'genre': 'Rock', 'accuracy': 0.95}
+            'results': {'genre': 'Rock', 'accuracy': '0.95'}
         }
 
         inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': mock_create_file})
@@ -89,15 +100,18 @@ class TestInferenceTaskFullRun:
         calls = [json.loads(c[0][1]) for c in mock_broker.publish.call_args_list]
         assert calls[0]['status'] == 'PROCESSING'
         assert calls[1]['results']['genre'] == 'Rock'
-        assert calls[1]['results']['accuracy'] == 0.95
+        assert calls[1]['results']['accuracy'] == '0.95'
 
         # Check db status update
         calls = mock_db['update_status'].call_args_list
         assert calls[0][0] == (TASK_ID, 'PROCESSING')
         assert calls[1][0] == (TASK_ID, 'COMPLETE')
 
-        # Check Inference ran
-        mock_inference['run'].assert_called_once_with(b'sampled')
+        # Check spect ran
+        mock_inference['spect'].assert_called_once_with(FILE_BYTES_INPUT)
+
+        # Check Inference ran (Have to compare args, since it takes a numpy array)
+        np.testing.assert_array_equal(RUN_INPUT, mock_inference['run'].call_args[0][0])
 
         # Check publishes to the correct channel
         for call in mock_broker.publish.call_args_list:

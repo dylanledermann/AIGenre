@@ -12,11 +12,12 @@ from src.service.helpers import mp3_to_spectrogram, sample_file_bytes, get_audio
 class BaseClassWithLogging(celery.Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         # Log error and send failure result to listeners
-        update_task_status(args[0], 'FAILED', error = "Task Error: task failed, task_id={args[0]}")
+        print(args, kwargs)
+        update_task_status(task_id, 'FAILED', error = "Task Error: task failed, task_id={task_id}")
         get_backend().publish("celery:results", json.dumps({
-            'task_id': args[0],
+            'task_id': task_id,
             'status': 'FAILED',
-            'error': f"Task Error: task failed, task_id={args[0]}"
+            'error': f"Task Error: task failed, task_id={task_id}"
         }))
         # Call super
         super().on_failure(exc, task_id, args, kwargs, einfo)
