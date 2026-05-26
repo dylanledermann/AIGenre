@@ -48,7 +48,7 @@ def query_audio_results_by_sample_hash(sample_hash: str) -> Optional[dict]:
                 
                 elif status == 'PROCESSING':
                     return {
-                        'taskId': exist[0],
+                        'task_id': exist[0],
                         'status': status
                     }
                 

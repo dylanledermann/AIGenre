@@ -39,6 +39,7 @@ def inference_task(self, task_id: str, file_hash: str, file_path: str):
         update_task_status(task_id, 'FAILED', error = "Task Error: file not found, task_id={task_id}, file_path={file_path}")
         _backend.publish("celery:results", json.dumps({
             'task_id': task_id,
+            'file_hash': file_hash,
             'status': 'FAILED',
             'error': f"Task Error: file not found in database, task_id={task_id}"
         }))
@@ -59,6 +60,7 @@ def inference_task(self, task_id: str, file_hash: str, file_path: str):
             'file_hash': file_hash,
             **audio_hash_query
         }
+        update_task_status(task_id, 'COMPLETE', results = payload['results'])
         _backend.publish("celery:results", json.dumps(payload))
         return
     
@@ -66,6 +68,7 @@ def inference_task(self, task_id: str, file_hash: str, file_path: str):
     update_task_status(task_id, 'PROCESSING')
     _backend.publish("celery:results", json.dumps({
         'task_id': task_id,
+        'file_hash': file_hash,
         'status': 'PROCESSING'
     }))
     spectrogram = mp3_to_spectrogram(sampled_bytes)
@@ -74,6 +77,7 @@ def inference_task(self, task_id: str, file_hash: str, file_path: str):
     payload = {
         'task_id': task_id,
         'file_hash': file_hash,
+        'status': 'COMPLETE',
         'results': {
             'genre': genre,
             'accuracy': accuracy

@@ -88,7 +88,6 @@ class TestInferenceTaskCacheHit:
 
         # Check inference and update not ran, since using cached values
         mock_inference['run'].assert_not_called()
-        mock_db['update_status'].assert_not_called()
 
 class TestInferenceTaskFullRun:
     def test_publishes_processing_then_complete(self, mock_broker, mock_db, mock_inference, mock_create_file):
