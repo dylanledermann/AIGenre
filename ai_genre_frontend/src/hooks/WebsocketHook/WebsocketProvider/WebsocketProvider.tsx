@@ -87,7 +87,10 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
         };
 
         newWebsocket.onerror = () => {
+          // Update the state to failed
           updateState(taskId, { status: WebsocketStatuses.FAILED, error: 'Websocket error' });
+          // Close the websocket connection
+          websockets.current.get(taskId)?.close();
         };
 
         newWebsocket.onclose = () => {

@@ -5,7 +5,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import WebsocketProvider from './WebsocketProvider';
 import '@testing-library/jest-dom';
 import { type ReactNode } from 'react';
-import { WebsocketStatuses } from '../../../types/WebsocketTypes/WebsocketTypes';
+import { WebsocketStatuses, type WebsocketData } from '../../../types/WebsocketTypes/WebsocketTypes';
 
 const WS_URL = 'wss://api.example.com';
 
@@ -140,6 +140,54 @@ describe('WebsocketProvider', () => {
                 expect(result.current.connections.has(taskId)).toBe(true);
                 expect(result.current.connections.get(taskId)!.status).toBe(WebsocketStatuses.FAILED);
                 expect(result.current.connections.get(taskId)!.error).toBe('Connection closed unexpectedly');
+                
+                // calls should not be changed
+                expect(result.current.calls[0]).toBe(taskId);
+                expect(result.current.calls.length).toBe(1);
+            });
+        });
+
+        it('updates websocket state on websocket error', async () => {
+            const taskId = 'task-1';
+            const url = `${WS_URL}/${taskId}`;
+            // Throw error from server to trigger onerror() on the client
+            server.use(
+                ws.link(url).addEventListener(
+                    'connection',
+                    () => {
+                        throw new Error('Error to test onerror');
+                    }
+                ),
+            );
+
+            const {result} = setup();
+
+            act(() => {
+                result.current.open(taskId, url);
+            });
+
+            // Wait for the error to trigger, then validate the state is updated
+            await waitFor(() => {
+                expect(result.current.connections.has(taskId)).toBe(true);
+                expect(result.current.connections.get(taskId)!.status).toBe(WebsocketStatuses.FAILED);
+                expect(result.current.connections.get(taskId)!.error).toBe('Websocket error');
+            });
+        });
+
+        it('adds websocket information without creating a new websocket when add() is called', async () => {
+            const taskId = 'task-1';
+            const completeTask = {taskId: taskId, status: 'COMPLETE', results: {genre: 'GENRE', accuracy: 'ACC'}} as unknown as WebsocketData;
+
+            const {result} = setup();
+
+            act(() => {
+                result.current.add(completeTask);
+            });
+
+            await waitFor(() => {
+                // Websocket status should be updated to COMPLETE
+                expect(result.current.connections.has(taskId)).toBe(true);
+                expect(result.current.connections.get(taskId)!.status).toBe(WebsocketStatuses.COMPLETE);
                 
                 // calls should not be changed
                 expect(result.current.calls[0]).toBe(taskId);
