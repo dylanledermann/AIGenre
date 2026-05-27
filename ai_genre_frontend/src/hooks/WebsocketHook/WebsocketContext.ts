@@ -6,7 +6,7 @@ export interface WebsocketContextValue {
   calls: string[];
   add: (data: WebsocketData) => void;
   open: (taskId: string, url: string) => void;
-  close: (taskId: string, url: string) => void;
+  close: (taskId: string) => void;
   closeAll: () => void;
 }
 

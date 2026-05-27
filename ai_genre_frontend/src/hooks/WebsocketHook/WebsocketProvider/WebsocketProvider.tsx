@@ -3,8 +3,8 @@ import {
   WebsocketStatuses,
   type WebsocketData,
   type WebsocketState,
-} from '../../types/WebsocketTypes/WebsocketTypes';
-import { WebsocketContext } from './WebsocketContext';
+} from '../../../types/WebsocketTypes/WebsocketTypes';
+import { WebsocketContext } from '../WebsocketContext';
 
 const defaultState = (): WebsocketState => ({
   status: WebsocketStatuses.CONNECTING,
@@ -30,7 +30,16 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, []);
 
+  /**
+   * This functions adds websocket information to calls and connections.
+   * Used when a websocket should not be opened i.e. the task run is saved/cached on the backend.
+   */
   const add = useCallback((data: WebsocketData) => {
+    // Change status to WebsocketStatuses type, since this should be called with backend info (string)
+    data.status = WebsocketStatuses[data.status as unknown as keyof typeof WebsocketStatuses];
+    // Update state to have the information whether it is an update or adding the new info
+    updateState(data.taskId, data);
+    // Add the task id to the calls
     setCalls((prev) => {
       const next = structuredClone(prev);
       next.push(data.taskId);
@@ -62,8 +71,8 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
         newWebsocket.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data as string) as WebsocketData;
-            console.log(message);
-            updateState(taskId, { message } as Partial<WebsocketState>);
+            message.status = WebsocketStatuses[message.status as unknown as keyof typeof WebsocketStatuses];
+            updateState(taskId, message as Partial<WebsocketState>);
             if (
               message.status == WebsocketStatuses.COMPLETE ||
               message.status == WebsocketStatuses.FAILED
@@ -81,7 +90,27 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
           updateState(taskId, { status: WebsocketStatuses.FAILED, error: 'Websocket error' });
         };
 
-        newWebsocket.onclose = () => {};
+        newWebsocket.onclose = () => {
+          // onclose needs to use the current connections, not the state onopen
+          setConnections(prev => {
+            const current = prev.get(taskId);
+            // Update saved state if task is not finished
+            if (!current || current.status === WebsocketStatuses.COMPLETE || current.status === WebsocketStatuses.FAILED) {
+              return prev;
+            }
+
+            const next = new Map(prev);
+            next.set(taskId, {
+              ...current,
+              status: WebsocketStatuses.FAILED,
+              error: 'Connection closed unexpectedly',
+            });
+            return next;
+          });
+          
+          // Remove the task from the websockets ref
+          websockets.current.delete(taskId);
+        };
       }
 
       // Add new call to calls
