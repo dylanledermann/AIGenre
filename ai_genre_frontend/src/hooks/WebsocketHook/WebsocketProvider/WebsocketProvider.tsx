@@ -52,6 +52,7 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
       const exists = websockets.current.has(taskId);
 
       if (!exists) {
+        console.log(`Opening ws: ${url}`);
         const newWebsocket = new WebSocket(url);
 
         // Update connections and websockets

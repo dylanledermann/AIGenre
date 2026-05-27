@@ -5,6 +5,7 @@ import { createQuery } from '../services/InferenceService';
 import config from '../config';
 import DragNDrop from '../components/DragNDrop/DragNDrop';
 import { useWebsockets } from '../hooks/WebsocketHook/WebsocketContext';
+import { WebsocketStatuses } from '../types/WebsocketTypes/WebsocketTypes';
 
 const Dashboard = () => {
   const { calls, connections, add, open } = useWebsockets();
@@ -14,8 +15,10 @@ const Dashboard = () => {
   const queryMutation = useMutation({
     mutationFn: (file: File) => createQuery(file),
     onSuccess: (data) => {
-      console.log(data);
-      if (data.status.name === 'PENDING') {
+      // reset file and error
+      setFile(null);
+      setError(null);
+      if (data.status === WebsocketStatuses.PENDING.name || data.status === WebsocketStatuses.PROCESSING.name) {
         open(data.taskId, `${config.api.websocketBaseUrl}/topic/results/${data.taskId}`);
       } else {
         add(data);
@@ -57,7 +60,8 @@ const Dashboard = () => {
           <button
             style={{ width: '100%', maxWidth: '150px', color: `${error ? 'primary' : ''}` }}
             onClick={uploadFile}
-            disabled={error != null}
+            disabled={error !== null && file !== null}
+            id='upload'
           >
             Upload
           </button>

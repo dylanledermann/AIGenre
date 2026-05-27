@@ -1,23 +1,18 @@
 import {ws} from 'msw';
-import {setupServer} from 'msw/node';
 import { useWebsockets } from '../WebsocketContext';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import WebsocketProvider from './WebsocketProvider';
 import '@testing-library/jest-dom';
 import { type ReactNode } from 'react';
 import { WebsocketStatuses, type WebsocketData } from '../../../types/WebsocketTypes/WebsocketTypes';
+import { WS_URL, server } from '../../../__tests__/WebsocketServerSetup';
 
-const WS_URL = 'wss://api.example.com';
-
-const server = setupServer();
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
-
+// Base wrapper for the provider
 const wrapper = ({children}: {children: ReactNode}) => (
     <WebsocketProvider>{children}</WebsocketProvider>
 );
 
+// renderHook allows use to access the values for the provider
 const setup = () => renderHook(() => useWebsockets(), {wrapper});
 
 describe('WebsocketProvider', () => {
