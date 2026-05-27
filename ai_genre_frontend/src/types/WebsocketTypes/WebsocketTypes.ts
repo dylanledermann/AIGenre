@@ -23,7 +23,7 @@ export const WebsocketStatuses = {
 } as const;
 
 // Enum-adjacent websocket type. Works similar to python enums
-export type WebsocketStatus = (typeof WebsocketStatuses)[keyof typeof WebsocketStatuses];
+export type WebsocketStatus = typeof WebsocketStatuses[keyof typeof WebsocketStatuses];
 
 export interface Result {
   accuracy: string;

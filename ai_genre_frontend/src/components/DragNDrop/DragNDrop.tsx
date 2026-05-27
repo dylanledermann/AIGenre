@@ -25,6 +25,7 @@ const DragNDrop = ({ file, setFile, setError }: DragNDropProps) => {
       return;
     }
     setFile(incoming);
+    setError(null);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {

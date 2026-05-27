@@ -3,7 +3,7 @@ import {
   WebsocketStatuses,
   type WebsocketData,
   type WebsocketState,
-} from '../../types/WebsocketTypes';
+} from '../../types/WebsocketTypes/WebsocketTypes';
 import { WebsocketContext } from './WebsocketContext';
 
 const defaultState = (): WebsocketState => ({

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { WebsocketData, WebsocketState } from '../../types/WebsocketTypes';
+import type { WebsocketData, WebsocketState } from '../../types/WebsocketTypes/WebsocketTypes';
 
 export interface WebsocketContextValue {
   connections: Map<string, WebsocketState>;

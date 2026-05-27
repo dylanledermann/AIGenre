@@ -1,4 +1,4 @@
-import type { WebsocketState } from '../../types/WebsocketTypes';
+import type { WebsocketState } from '../../types/WebsocketTypes/WebsocketTypes';
 import styles from './ListItem.module.css';
 
 type ListItemProps = {
@@ -14,7 +14,6 @@ const getProgressPercentage = (statusStep: number): number => {
 
 const ListItem = ({ taskId, connection }: ListItemProps) => {
   const { status, error, results } = connection;
-  console.log(status, error, results);
 
   return (
     <div
