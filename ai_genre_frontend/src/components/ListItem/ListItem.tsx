@@ -7,8 +7,6 @@ type ListItemProps = {
 };
 
 const getProgressPercentage = (statusStep: number): number => {
-  console.log(statusStep);
-  console.log(Math.min(statusStep, 3) / 3);
   return (Math.min(statusStep, 3) / 3) * 100;
 };
 
@@ -55,7 +53,7 @@ const ListItem = ({ taskId, connection }: ListItemProps) => {
           <div
             className={styles.progressTrack}
             role="progressbar"
-            aria-valuenow={Math.round(getProgressPercentage(status.value))}
+            aria-valuenow={getProgressPercentage(status.value)}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label={`${taskId} progress`}
