@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 @EnableWebSocketMessageBroker
 @Slf4j
 public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
-    @Value("${spring.websocket.allowed-origins")
+    @Value("${spring.websocket.allowed-origins}")
     private String[] websocketAllowedOrigins;
 
     @Override

@@ -12,10 +12,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Configuration
 @EnableWebSecurity
+@Slf4j
 public class SecurityConfig {
-    @Value("${spring.http.allowed-origins")
+    @Value("${spring.http.allowed-origins}")
     private String[] allowedOrigins;
 
     @Bean
@@ -38,7 +41,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsFilter() {
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         final CorsConfiguration config = new CorsConfiguration();
-        
+
         config.setAllowCredentials(true);
         config.setAllowedOrigins(Arrays.asList(allowedOrigins));
         config.setAllowedHeaders(Arrays.asList("*"));

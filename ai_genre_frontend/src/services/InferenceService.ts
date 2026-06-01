@@ -1,7 +1,6 @@
 import config from '../config/index.ts';
 
 export const createQuery = async (file: File) => {
-  console.log(config.api.baseUrl);
   const formData = new FormData();
   formData.append('file', file);
   const response: Response = await fetch(config.api.baseUrl + '/query', {

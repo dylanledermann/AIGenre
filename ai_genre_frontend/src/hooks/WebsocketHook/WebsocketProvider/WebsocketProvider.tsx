@@ -54,7 +54,6 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
       const exists = websockets.current.has(taskId);
 
       if (!exists) {
-        console.log(`Creating connection to ${config.api.websocketBaseUrl} on topic ${topic}`);
         const client = new Client({
           webSocketFactory: () => new WebSocket(config.api.websocketBaseUrl),
 

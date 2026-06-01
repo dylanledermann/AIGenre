@@ -33,9 +33,10 @@ spring:
             initialization-fail-time: 10000
     flyway:
         location: classpath:db/migration
+    http:
+        allowed-origins: ${HTTP_ALLOWED_ORIGINS:http://localhost}
     websocket:
-        allowed-origins:
-            - ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost}
+        allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost}
     jpa:
         hibernate:
             # Hibernate only validates the db format matches the java code (flyway creates the db)

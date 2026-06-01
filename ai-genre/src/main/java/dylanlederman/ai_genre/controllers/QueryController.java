@@ -73,13 +73,11 @@ public class QueryController {
         ResultModel newTask = queryService.createTask(fileHash);
 
         try {
-            // Create grpc request if the task does not exist, otherwise send the task id/completed results depending on the status.
-            log.info(" for task " + newTask.taskId().toString());
+            // Create grpc request for the task and send the task id/status to as response
             grpcServiceStub.buildTaskStub(newTask.taskId().toString(), fileHash, fileBytes).get();
             return ResponseEntity.accepted().body(newTask);
         } catch (Exception e) {
             // Delete the task id if an error occurred
-            log.info("Exception occurred for task " + newTask.taskId().toString());
             queryService.deleteTask(newTask.taskId());
             log.error("Error occurred building task stub: ", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal Server Error"));
