@@ -57,7 +57,6 @@ public class QueryController {
         // Check if the hash exists. If so -> return it
         // To-Do only return if it exists and hasn't failed (running or complete), else get ready to re-run it
         Optional<ResultModel> savedRes = queryService.checkHash(fileHash);
-
         // Send task with complete status if already created
         if (savedRes.isPresent()) {
             return ResponseEntity.ok(savedRes.get());

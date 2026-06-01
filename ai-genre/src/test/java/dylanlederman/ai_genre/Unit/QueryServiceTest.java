@@ -4,10 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,6 +75,17 @@ public class QueryServiceTest {
     }
 
     @Test
+    void testCreateHashMultiple() {
+        // Validate idempotency
+        assertDoesNotThrow(() -> {
+            Path filePath = sampleMp3.getFilePath();
+            byte[] fileBytes = Files.readAllBytes(filePath);
+
+            assertEquals(queryService.hashFile(fileBytes), queryService.hashFile(fileBytes));
+        });
+    }
+
+    @Test
     void testCheckHashCachedInvalidResult() {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaa".getBytes();
@@ -115,6 +130,24 @@ public class QueryServiceTest {
 
             Optional<ResultModel> res = queryService.checkHash(hash);
             
+            assertFalse(res.isEmpty());
+            assertEquals(queryResult, res.get());
+        });
+    }
+
+    @Test
+    void testCheckHashRepoComplete() {
+        assertDoesNotThrow(() -> {
+            byte[] tempBytes = "aaaa".getBytes();
+            String hash = queryService.hashFile(tempBytes);
+            GenreResultModel results = new GenreResultModel("Genre", "Acc");
+            ResultModel queryResult = new ResultModel.Complete(UUID.randomUUID(), hash, results);
+
+            when(queryRepo.getResultsByFileHash(hash)).thenReturn(Optional.of(queryResult));
+
+            Optional<ResultModel> res = queryService.checkHash(hash);
+            
+            verify(valueOperations).set(eq("result:" + queryResult.fileHash()), eq(objectMapper.writeValueAsString(queryResult)), any(Duration.class));
             assertFalse(res.isEmpty());
             assertEquals(queryResult, res.get());
         });

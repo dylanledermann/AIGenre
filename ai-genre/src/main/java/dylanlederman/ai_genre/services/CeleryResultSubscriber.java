@@ -13,6 +13,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -113,9 +114,9 @@ public class CeleryResultSubscriber implements MessageListener {
 
     private void cacheResult(String fileHash, UUID taskId, Object result) {
          try {
-            redisTemplate.opsForValue().set("result:" + fileHash, objectMapper.writeValueAsString(result), ttl);
+            redisTemplate.opsForValue().set("result:" + fileHash, objectMapper.writeValueAsString(result), Duration.ofMillis(ttl));
             // Short lived cache value for clients that join websocket as it finishes (5 minutes: 1000ms/s * 60s/min * 5min)
-            redisTemplate.opsForValue().set("result:" + taskId.toString(), objectMapper.writeValueAsString(result), 300000);
+            redisTemplate.opsForValue().set("result:" + taskId.toString(), objectMapper.writeValueAsString(result), Duration.ofMillis(300000));
          } catch (Exception e) {
             log.error("Failed to cache result fileHash={}", fileHash, e);
          }

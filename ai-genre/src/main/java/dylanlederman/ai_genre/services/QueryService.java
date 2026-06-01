@@ -1,6 +1,7 @@
 package dylanlederman.ai_genre.services;
 
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -61,24 +62,28 @@ public class QueryService {
     public Optional<ResultModel> checkHash(String hash) {
         String cached = redisTemplate.opsForValue().get("result:" + hash);
         Optional<ResultModel> dbResult;
-        ResultModel result;
-
+        ResultModel result = null;
         if (cached != null) {
             // Convert cached value to ResultModel (only complete is cached)
             try {
                 result = objectMapper.readValue(cached, ResultModel.Complete.class);
             } catch (Exception e) {
-                log.error("Malformed cached value: file hash={} result={}", hash, cached);
+                e.printStackTrace();
+                log.error("Malformed cached value: file hash={}, error={}", hash, e.getMessage());
                 // Delete invalid cached values
                 redisTemplate.delete("result:" + hash);
                 return Optional.empty();
             }
-        } else if ((dbResult = queryRepo.getResultsByFileHash(hash)).isPresent()) {
+        }
+        // second if statement incase reading the cached value fails.
+        if (result == null && 
+            (dbResult = queryRepo.getResultsByFileHash(hash)).isPresent()
+        ) {
             // Check if db contains fileHash
             result = dbResult.get();
-        } else {
-            return Optional.empty();
         }
+        // Return optional if no value
+        if (result == null) return Optional.empty();
 
         // Validate the result for the ResultModel fields
         Set<String> resultViolations = result.validate();
@@ -102,7 +107,7 @@ public class QueryService {
     // Private function that caches the given ResultModel.
     private void cacheResult(ResultModel result) {
         try {
-            redisTemplate.opsForValue().set("result:" + result.fileHash(), objectMapper.writeValueAsString(result), ttl);
+            redisTemplate.opsForValue().set("result:" + result.fileHash(), objectMapper.writeValueAsString(result), Duration.ofMillis(ttl));
         } catch (Exception e) {
             log.error("Failed to cache result fileHash={}", result.fileHash(), e);
         }

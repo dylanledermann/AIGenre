@@ -36,7 +36,7 @@ public class GrpcServiceStub {
 
             @Override
             public void onError(Throwable t) {
-                log.info("Error Occurred in GRPC");
+                log.error("Error Occurred in GRPC", t.getMessage());
                 future.completeExceptionally(t);
             }
 
