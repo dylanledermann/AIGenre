@@ -3,6 +3,8 @@ import os
 from celery import Celery
 from celery.signals import worker_process_init, worker_process_shutdown
 
+from src.config.object_storage import init_minio
+
 celery_app = Celery(
     'ai-genre-worker',
     broker=os.getenv('BROKER_URL'),
@@ -35,10 +37,16 @@ def init_worker(**kwargs):
     init_settings()
     settings = get_settings()
     
+    # Build ai model
     build_model(settings.model_config())
     
+    # Initialize db pool
     init_pool(settings.database_config())
 
+    # Initialize MinIO object storage
+    init_minio(settings.minio_config())
+
+    # Initialize backend redis pub-sub
     init_backend(settings.backend_config())
 
 @worker_process_shutdown.connect

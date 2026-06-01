@@ -1,6 +1,7 @@
 pytest
 testcontainers[postgres]
 testcontainers[rabbitmq]
+testcontainers[minio]
 grpcio
 grpcio-tools
 protobuf
@@ -15,3 +16,4 @@ librosa
 celery
 pytest-grpc
 python-magic
+minio

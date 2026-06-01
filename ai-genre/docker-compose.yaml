@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres-db:
     image: postgres:16-alpine
     env_file: .env
     volumes: 
@@ -13,7 +13,7 @@ services:
     networks:
       - internal
 
-  cache:
+  redis-cache:
     image: redis:latest
     volumes:
       - cache_data:/data
@@ -27,7 +27,7 @@ services:
     networks:
       - internal
   
-  broker:
+  redis-broker:
     image: redis:latest
     volumes:
       - broker_data:/data
@@ -47,11 +47,11 @@ services:
       - "8080:8080"
     env_file: .env
     depends_on:
-      db:
+      postgres-db:
         condition: service_healthy
-      cache:
+      redis-cache:
         condition: service_healthy
-      broker:
+      redis-broker:
         condition: service_healthy
     networks:
       - internal

@@ -10,7 +10,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import dylanlederman.ai_genre.models.GenreResultModel;
 import dylanlederman.ai_genre.models.ResultModel;
@@ -37,11 +36,13 @@ public class QueryRepo {
         };
     }
 
-    @Transactional
     public void insertFile(@Valid UploadModel upload) {
+        // Do nothing on conflict
         String uploadInsertQuery = """
             INSERT INTO uploads (file_hash, file_metadata) 
             VALUES(:fileHash, :fileMetadata::jsonb)
+            ON CONFLICT (file_hash)
+            DO NOTHING
         """;
 
         namedJdbcTemplate.update(uploadInsertQuery, Map.of(
@@ -50,11 +51,18 @@ public class QueryRepo {
         ));
     }
 
-    public Optional<ResultModel> getByFileHash(String file_hash) {
+    /**
+     * Gets the most recent task on the file hash if it exists.
+     * @param file_hash the hash of the file to be checked
+     * @return Optional of ResultModel if it exists or empty
+     */
+    public Optional<ResultModel> getResultsByFileHash(String file_hash) {
         String getQuery = """
             SELECT task_id, file_hash, status, result, error
             FROM audio_results
             WHERE file_hash = ?
+            ORDER BY created_at DESC
+            LIMIT 1
         """;
         try{
             ResultModel res = jdbcTemplate.queryForObject(getQuery, resultRowMapper(), file_hash);
@@ -64,27 +72,23 @@ public class QueryRepo {
         }
     }
 
-    public void resetTask(String fileHash, UUID taskId) {
-        String updateQuery = """
-            UPDATE audio_results
-            SET task_id = :taskId, status = 'PENDING', error = NULL, result = NULL, created_at = NOW(), finished_at = NULL
-            WHERE file_hash = :fileHash
-        """;
-
-        namedJdbcTemplate.update(updateQuery, Map.of("taskId", taskId, "fileHash", fileHash));
-    }
-
     public void insertTask(String fileHash, UUID taskId) {
         String insertQuery = """
             INSERT INTO audio_results
             (task_id, file_hash)
             VALUES (:taskId, :fileHash)
-            ON CONFLICT (file_hash)
-            DO NOTHING
         """;
         namedJdbcTemplate.update(insertQuery, Map.of(
             "taskId", taskId,
             "fileHash", fileHash
         ));
+    }
+
+    public void deleteTask(UUID taskId) {
+        String removeQuery = """
+            DELETE FROM audio_results
+            WHERE task_id = ?        
+        """;
+        jdbcTemplate.update(removeQuery, taskId);
     }
 }

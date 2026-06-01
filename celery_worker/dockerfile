@@ -6,6 +6,9 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 appuser
 
+# Create temp file and give the user perms for it
+RUN mkdir -p /app/src/tmp && chown -R appuser:appgroup /app/src/tmp
+
 # Install system dependencies (needed for psycopg)
 RUN apt-get update && apt-get install -y python3 python3-pip
 

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -7,11 +8,13 @@ import os
 # db mocks
 from testcontainers.postgres import PostgresContainer
 from testcontainers.rabbitmq import RabbitMqContainer
+from testcontainers.minio import MinioContainer
 import fakeredis
 
 # Global containers
 postgres = PostgresContainer("postgres:16-alpine")
 rabbitmq_broker = RabbitMqContainer('rabbitmq:3.12-alpine')
+minio_container = MinioContainer()
 
 # Fake Redis
 redis_server = fakeredis.FakeServer()
@@ -26,6 +29,7 @@ def pytest_configure(config):
     )
     postgres.start()
     rabbitmq_broker.start()
+    minio_container.start()
      # Model
     os.environ['MODEL_PATH']='./src/ai_model/without_lyrics_cnn_weights.pth'
 
@@ -44,9 +48,16 @@ def pytest_configure(config):
     # Broker
     os.environ['BROKER_URL']=f"amqp://{rabbitmq_broker.username}:{rabbitmq_broker.password}@{rabbitmq_broker.get_container_host_ip()}:{rabbitmq_broker.get_exposed_port(5672)}/"
 
+    # MinIO
+    minio_config = minio_container.get_config()
+    os.environ['MINIO_HOST'] = minio_config['endpoint']
+    os.environ['MINIO_ROOT_USER'] = minio_config['access_key']
+    os.environ['MINIO_ROOT_PASSWORD'] = minio_config['secret_key']
+
 def pytest_unconfigure(config):
     postgres.stop()
     rabbitmq_broker.stop()
+    minio_container.stop()
 
 @pytest.fixture(scope='session')
 def celery_app():
@@ -75,6 +86,7 @@ def redis_sub():
 
 @pytest.fixture(scope='session', autouse=True)
 def mock_backend(redis_backend):
+    import src.tasks.inference_task # import for patching
     # fake redis is in memory, so it needs to be patched over the real connection
     with patch('src.tasks.inference_task.get_backend', return_value=redis_backend):
         yield

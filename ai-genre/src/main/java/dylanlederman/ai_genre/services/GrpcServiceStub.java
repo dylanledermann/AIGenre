@@ -9,21 +9,25 @@ import org.springframework.stereotype.Service;
 import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
+import lombok.extern.slf4j.Slf4j;
 import dylanlederman.ai_genre.proto.EnqueueResponse;
 import dylanlederman.ai_genre.proto.FileChunk;
 import dylanlederman.ai_genre.proto.InferenceServiceGrpc;
 
 @Service
+@Slf4j
 public class GrpcServiceStub {
     private InferenceServiceGrpc.InferenceServiceStub asyncStub;
 
     public GrpcServiceStub(GrpcChannelFactory channels) {
-        this.asyncStub = InferenceServiceGrpc.newStub(channels.createChannel("celery-worker"));
+        // Channel is specificied in application.yaml spring.grpc.client.channels, must match the channel name
+        this.asyncStub = InferenceServiceGrpc.newStub(channels.createChannel("grpc-server"));
     }
 
-    public CompletableFuture<EnqueueResponse> buildTaskStub(String taskId, String fileHash, byte[] fileBytes) {
+    public CompletableFuture<EnqueueResponse> buildTaskStub(String taskId, String fileHash, byte[] fileBytes) throws Exception {
         CompletableFuture<EnqueueResponse> future = new CompletableFuture<>();
 
+        // Stream file over grpc, log if an error occurs
         StreamObserver<EnqueueResponse> responseObserver = new StreamObserver<>() {
             @Override
             public void onNext(EnqueueResponse response) {
@@ -32,6 +36,7 @@ public class GrpcServiceStub {
 
             @Override
             public void onError(Throwable t) {
+                log.info("Error Occurred in GRPC");
                 future.completeExceptionally(t);
             }
 

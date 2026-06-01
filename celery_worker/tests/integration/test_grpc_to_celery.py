@@ -5,9 +5,9 @@ import uuid
 
 import pytest
 
-from celery_worker.src.config.settings import get_settings, init_settings
-from celery_worker.src.repo.repo import get_db, init_pool
-from celery_worker.src.service.helpers import get_audio_hash, sample_file_bytes
+from src.config.settings import get_settings, init_settings
+from src.repo.repo import get_db, init_pool
+from src.service.helpers import get_audio_hash, sample_file_bytes
 from src.generated_sources.inference_pb2 import FileChunk
 
 channel = "celery:results"

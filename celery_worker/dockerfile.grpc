@@ -4,13 +4,17 @@ WORKDIR /app
 
 # Create user group
 RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 appuser
+    adduser --system --ingroup appgroup --uid 1001 appuser
 
-# Install system dependencies (needed for psycopg)
+# Install system dependencies (needed for psycopg and python-magic)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libc-dev \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Create temp file and give the user perms for it
+RUN mkdir -p /app/src/tmp && chown -R appuser:appgroup /app/src/tmp
 
 # Install packages
 COPY ./requirements.txt .

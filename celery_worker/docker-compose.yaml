@@ -27,6 +27,21 @@ services:
       start_period: 30s
     networks:
       - celery
+  
+  object-storage:
+    image: minio/minio
+    command: server /data
+    env_file: .env
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+    networks:
+      - celery
 
   celery-worker:
     image: ai-genre-celery
@@ -42,6 +57,8 @@ services:
       db:
         condition: service_healthy
       celery-broker:
+        condition: service_healthy
+      object-storage:
         condition: service_healthy
     restart: always
     networks:

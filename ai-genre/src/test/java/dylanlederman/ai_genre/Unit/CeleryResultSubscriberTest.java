@@ -60,13 +60,13 @@ public class CeleryResultSubscriberTest {
     @Test
     void onValidMessage() {
         assertDoesNotThrow(() -> {
-            String taskId = UUID.randomUUID().toString();
+            UUID taskId = UUID.randomUUID();
             String status = "COMPLETE";
             String fileHash = "a".repeat(64);
             GenreResultModel genreRes = new GenreResultModel("pop", "73%");
             Map<String, Object> payload = Map.of(
-                "taskId", taskId,
-                "fileHash", fileHash,
+                "task_id", taskId,
+                "file_hash", fileHash,
                 "status", status,
                 "results", genreRes
             );
@@ -78,11 +78,12 @@ public class CeleryResultSubscriberTest {
             celeryResultSubscriber.onMessage(message, null);
 
             Map<String, Object> expected = Map.of(
+                "taskId", taskId,
                 "status", status,
                 "results", genreRes
             );
 
-            verify(wsTemplate).convertAndSend("topic/results/" + taskId, (Object) expected);
+            verify(wsTemplate).convertAndSend("/topic/results/" + taskId, (Object) expected);
         });
     }
 

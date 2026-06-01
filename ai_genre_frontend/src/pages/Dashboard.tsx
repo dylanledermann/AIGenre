@@ -19,7 +19,7 @@ const Dashboard = () => {
       setFile(null);
       setError(null);
       if (data.status === WebsocketStatuses.PENDING.name || data.status === WebsocketStatuses.PROCESSING.name) {
-        open(data.taskId, `${config.api.websocketBaseUrl}/topic/results/${data.taskId}`);
+        open(data.taskId, `${config.api.websocketTopic}/${data.taskId}`);
       } else {
         add(data);
       }

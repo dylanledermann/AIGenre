@@ -5,6 +5,8 @@ import {
   type WebsocketState,
 } from '../../../types/WebsocketTypes/WebsocketTypes';
 import { WebsocketContext } from '../WebsocketContext';
+import { Client } from '@stomp/stompjs';
+import config from '../../../config';
 
 const defaultState = (): WebsocketState => ({
   status: WebsocketStatuses.CONNECTING,
@@ -14,7 +16,7 @@ const defaultState = (): WebsocketState => ({
 
 const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
   // Tracks taskId to websocket
-  const websockets = useRef<Map<string, WebSocket>>(new Map());
+  const websockets = useRef<Map<string, Client>>(new Map());
   // Array of calls made and the response
   const [calls, setCalls] = useState<string[]>([]);
   // Tracks taskid to websocket state
@@ -48,73 +50,83 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const open = useCallback(
-    (taskId: string, url: string) => {
+    (taskId: string, topic: string) => {
       const exists = websockets.current.has(taskId);
 
       if (!exists) {
-        console.log(`Opening ws: ${url}`);
-        const newWebsocket = new WebSocket(url);
+        console.log(`Creating connection to ${config.api.websocketBaseUrl} on topic ${topic}`);
+        const client = new Client({
+          webSocketFactory: () => new WebSocket(config.api.websocketBaseUrl),
+
+          onConnect: () => {
+            // update state for the task to pending (connection was made)
+            updateState(taskId, { status: WebsocketStatuses.PENDING });
+
+            // Subscribe to the topic
+            console.log(`Subscribing to topic ${topic}`)
+            client.subscribe(topic, (event) => {
+              try {
+                // Parse the body and convert status to status type, then update state to the provided state
+                console.log(event.body);
+                const message = JSON.parse(event.body as string) as WebsocketData;
+                console.log(message)
+                message.status = WebsocketStatuses[message.status as unknown as keyof typeof WebsocketStatuses];
+                updateState(taskId, message as Partial<WebsocketState>);
+                if (
+                  message.status == WebsocketStatuses.COMPLETE ||
+                  message.status == WebsocketStatuses.FAILED
+                )
+                  // close the client if complete
+                  client.deactivate();
+              } catch {
+                updateState(taskId, {
+                  status: WebsocketStatuses.FAILED,
+                  error: 'Failed to parse message',
+                });
+              }
+            });
+          },
+
+          onStompError: () => {
+            // Update the state to failed
+            updateState(taskId, { status: WebsocketStatuses.FAILED, error: 'Websocket error' });
+            // Close the websocket connection
+            client.deactivate();
+          },
+
+          onDisconnect: () => {
+            // onclose needs to use the current connections, not the state onopen
+            setConnections(prev => {
+              const current = prev.get(taskId);
+              // Update saved state if task is not finished
+              if (!current || current.status === WebsocketStatuses.COMPLETE || current.status === WebsocketStatuses.FAILED) {
+                return prev;
+              }
+
+              const next = new Map(prev);
+              next.set(taskId, {
+                ...current,
+                status: WebsocketStatuses.FAILED,
+                error: 'Connection closed unexpectedly',
+              });
+              return next;
+            });
+            
+            // Remove the task from the websockets ref
+            websockets.current.delete(taskId);
+          }
+        });
 
         // Update connections and websockets
-        websockets.current.set(taskId, newWebsocket);
-
+        websockets.current.set(taskId, client);
         setConnections((prev) => {
           const next = new Map(prev);
           next.set(taskId, defaultState());
           return next;
         });
 
-        // Set up new websocket
-        newWebsocket.onopen = () => {
-          updateState(taskId, { status: WebsocketStatuses.PENDING });
-        };
-
-        newWebsocket.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data as string) as WebsocketData;
-            message.status = WebsocketStatuses[message.status as unknown as keyof typeof WebsocketStatuses];
-            updateState(taskId, message as Partial<WebsocketState>);
-            if (
-              message.status == WebsocketStatuses.COMPLETE ||
-              message.status == WebsocketStatuses.FAILED
-            )
-              newWebsocket.close();
-          } catch {
-            updateState(taskId, {
-              status: WebsocketStatuses.FAILED,
-              error: 'Failed to parse message',
-            });
-          }
-        };
-
-        newWebsocket.onerror = () => {
-          // Update the state to failed
-          updateState(taskId, { status: WebsocketStatuses.FAILED, error: 'Websocket error' });
-          // Close the websocket connection
-          websockets.current.get(taskId)?.close();
-        };
-
-        newWebsocket.onclose = () => {
-          // onclose needs to use the current connections, not the state onopen
-          setConnections(prev => {
-            const current = prev.get(taskId);
-            // Update saved state if task is not finished
-            if (!current || current.status === WebsocketStatuses.COMPLETE || current.status === WebsocketStatuses.FAILED) {
-              return prev;
-            }
-
-            const next = new Map(prev);
-            next.set(taskId, {
-              ...current,
-              status: WebsocketStatuses.FAILED,
-              error: 'Connection closed unexpectedly',
-            });
-            return next;
-          });
-          
-          // Remove the task from the websockets ref
-          websockets.current.delete(taskId);
-        };
+        // Start websocket connection
+        client.activate();
       }
 
       // Add new call to calls
@@ -128,11 +140,11 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const close = useCallback((taskId: string) => {
-    websockets.current.get(taskId)?.close();
+    websockets.current.get(taskId)?.deactivate();
   }, []);
 
   const closeAll = useCallback(() => {
-    websockets.current.forEach((websocket) => websocket.close());
+    websockets.current.forEach((websocket) => websocket.deactivate());
   }, []);
 
   useEffect(() => {

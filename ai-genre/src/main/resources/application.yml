@@ -1,5 +1,8 @@
 # Postgres DB
 spring:
+    main:
+        web-application-type: servlet
+    port: 8080
     autoconfigure:
         exclude: org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
     application:
@@ -32,7 +35,7 @@ spring:
         location: classpath:db/migration
     websocket:
         allowed-origins:
-            - localhost
+            - ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost}
     jpa:
         hibernate:
             # Hibernate only validates the db format matches the java code (flyway creates the db)
@@ -40,5 +43,5 @@ spring:
     grpc:
         client:
             channels:
-                celery-worker:
-                    address: ${CELERY_HOST}
+                grpc-server:
+                    address: ${GRPC_HOST}

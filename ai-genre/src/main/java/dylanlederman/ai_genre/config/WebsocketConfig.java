@@ -7,8 +7,11 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Configuration
 @EnableWebSocketMessageBroker
+@Slf4j
 public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
     @Value("${spring.websocket.allowed-origins")
     private String[] websocketAllowedOrigins;
@@ -23,7 +26,6 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry
             .addEndpoint("/ws")
-            .setAllowedOriginPatterns(websocketAllowedOrigins)
-            .withSockJS();
+            .setAllowedOrigins(websocketAllowedOrigins);
     }
 }

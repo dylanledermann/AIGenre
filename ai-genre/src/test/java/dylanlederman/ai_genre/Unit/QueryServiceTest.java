@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
@@ -72,20 +71,20 @@ public class QueryServiceTest {
     }
 
     @Test
-    void testCheckInvalidResultModel() {
+    void testCheckHashCachedInvalidResult() {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaa".getBytes();
             String hash = queryService.hashFile(tempBytes);
             Map<String, String> cache = Map.of("Key", "Value");
             String cacheString = objectMapper.writeValueAsString(cache);
             when(valueOperations.get("result:" + hash)).thenReturn(cacheString);
-            Optional<Map<String, Object>> res = queryService.checkHash(hash);
+            Optional<ResultModel> res = queryService.checkHash(hash);
             assertTrue(res.isEmpty());
         });
     }
 
     @Test
-    void testCheckHashCached() {
+    void testCheckHashCachedValidResult() {
         assertDoesNotThrow(() -> {
             byte[] tempBytes = "aaaa".getBytes();
             String hash = queryService.hashFile(tempBytes);
@@ -98,13 +97,10 @@ public class QueryServiceTest {
 
             when(valueOperations.get("result:" + hash)).thenReturn(cacheString);
 
-            Optional<Map<String, Object>> res = queryService.checkHash(hash);
+            Optional<ResultModel> res = queryService.checkHash(hash);
 
             assertFalse(res.isEmpty());
-            assertTrue(Map.of(
-                "status", cacheResult.status(),
-                "result", cacheResult.result()
-            ).equals(res.get()));
+            assertEquals(cacheResult, res.get());
         });
     }
 
@@ -115,21 +111,32 @@ public class QueryServiceTest {
             String hash = queryService.hashFile(tempBytes);
             ResultModel.Pending queryResult = new ResultModel.Pending(UUID.randomUUID(), hash);
 
-            when(queryRepo.getByFileHash(hash)).thenReturn(Optional.of(queryResult));
+            when(queryRepo.getResultsByFileHash(hash)).thenReturn(Optional.of(queryResult));
 
-            Optional<Map<String, Object>> res = queryService.checkHash(hash);
+            Optional<ResultModel> res = queryService.checkHash(hash);
             
             assertFalse(res.isEmpty());
-            assertTrue(Map.of(
-                "task_id", queryResult.taskId(),
-                "status", queryResult.status()
-            ).equals(res.get()));
+            assertEquals(queryResult, res.get());
         });
     }
     
     @Test
     void testCheckHashDNE() {
         String hash = "a".repeat(64);
+        assertTrue(queryService.checkHash(hash).isEmpty());
+    }
+
+    @Test
+    void testCheckHashFailed() {
+        // Check Hash when there is a cached/repo value that is Failed -> Should return empty to create a new task
+        // Create Failed Result model
+        String hash = "a";
+        UUID taskId = UUID.randomUUID();
+
+        ResultModel.Failed result = new ResultModel.Failed(taskId, hash, "Erro");
+
+        when(queryRepo.getResultsByFileHash(hash)).thenReturn(Optional.of(result));
+
         assertTrue(queryService.checkHash(hash).isEmpty());
     }
 
@@ -177,44 +184,16 @@ public class QueryServiceTest {
                 Files.probeContentType(path)
             );
 
-            assertFalse(queryService.saveFile(hash, bytes, metadata));
+            assertTrue(queryService.saveFile(hash, bytes, metadata));
         });
     }
 
-
     @Test
-    void testCreateTaskFailed() {
+    void testCreateTask() {
+        // Can only check the return is the correct type
         String fileHash = "a".repeat(64);
-        UUID taskId = UUID.randomUUID();
-        ResultModel failedResult = new ResultModel.Failed(taskId, fileHash, "Error");
-        when(queryRepo.getByFileHash(fileHash)).thenReturn(Optional.of(failedResult));
 
-        ResultModel actual = queryService.createTask(fileHash, taskId);
-        ResultModel expected = new ResultModel.Pending(taskId, fileHash);
-        assertEquals(expected, actual);
-    }
-
-    @Test
-    void testCreateTaskDNE() {
-        String fileHash = "a".repeat(64);
-        UUID taskId = UUID.randomUUID();
-        when(queryRepo.getByFileHash(fileHash)).thenReturn(Optional.empty());
-
-        ResultModel actual = queryService.createTask(fileHash, taskId);
-        ResultModel expected = new ResultModel.Pending(taskId, fileHash);
-        assertEquals(expected, actual);
-    }
-
-    @Test
-    void testCreateTaskComplete() {
-        String fileHash = "a".repeat(64);
-        UUID taskId = UUID.randomUUID();
-        GenreResultModel result = new GenreResultModel("genre", "accuracy");
-        ResultModel completeResult = new ResultModel.Complete(taskId, fileHash, result);
-        when(queryRepo.getByFileHash(fileHash)).thenReturn(Optional.of(completeResult));
-
-        ResultModel actual = queryService.createTask(fileHash, taskId);
-        assertEquals(completeResult, actual);
-        verify(redisTemplate).opsForValue();
+        ResultModel actual = queryService.createTask(fileHash);
+        assertTrue(actual instanceof ResultModel.Pending);
     }
 }

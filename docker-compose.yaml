@@ -1,0 +1,142 @@
+services:
+  # java backend stuff
+  postgres-db:
+    image: postgres:16-alpine
+    env_file: ./ai-genre/.env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - backend-network
+
+  redis-cache:
+    image: redis:7
+    volumes:
+      - cache-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - backend-network
+    
+  redis-broker:
+    image: redis:7
+    volumes:
+      - broker-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - backend-network
+  
+  spring-backend:
+    image: ai-genre-spring
+    ports:
+      - "8080:8080"
+    env_file: ./ai-genre/.env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+      redis-broker:
+        condition: service_healthy
+    networks:
+      - backend-network
+
+  # celery worker containers
+  celery-broker:
+    image: rabbitmq:3-management
+    volumes: 
+      - celery-broker:/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping && rabbitmq-diagnostics check_port_connectivity"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+      start_period: 30s
+    networks:
+      - worker-network
+  
+  minio-storage:
+    image: minio/minio
+    command: server /data
+    env_file: ./celery_worker/.env
+    volumes:
+      - object-storage:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+    networks:
+      - worker-network
+
+  celery-worker:
+    image: ai-genre-celery
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    env_file: ./celery_worker/.env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      celery-broker:
+        condition: service_healthy
+      minio-storage:
+        condition: service_healthy
+    networks:
+      - worker-network
+      - backend-network
+  
+  grpc-server:
+    image: ai-genre-grpc
+    env_file: ./celery_worker/.env
+    depends_on:
+      celery-worker:
+        condition: service_started
+    networks:
+      - backend-network
+      - worker-network
+
+  # react frontend
+  frontend:
+    image: ai-genre-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      spring-backend: 
+        condition: service_started
+    networks:
+      - backend-network
+      
+volumes:
+  db-data: {}
+  cache-data: {}
+  broker-data: {}
+  celery-broker: {}
+  object-storage: {}
+
+networks:
+  backend-network:
+    driver: bridge
+  worker-network:
+    driver: bridge

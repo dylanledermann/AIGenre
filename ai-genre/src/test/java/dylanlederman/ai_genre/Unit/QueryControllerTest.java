@@ -4,13 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.hamcrest.Matchers.matchesPattern;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +30,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+
 import dylanlederman.ai_genre.config.SecurityConfig;
 import dylanlederman.ai_genre.controllers.QueryController;
 import dylanlederman.ai_genre.models.FileMetadataModel;
@@ -45,7 +44,8 @@ import tools.jackson.databind.ObjectMapper;
 @WebMvcTest(value=QueryController.class, properties="spring.celery.url=http://localhost:8000")
 @Import({SecurityConfig.class})
 @ImportAutoConfiguration(classes={
-    JacksonAutoConfiguration.class
+    JacksonAutoConfiguration.class,
+    MockMvc.class
 })
 public class QueryControllerTest {
     @MockitoBean
@@ -64,7 +64,8 @@ public class QueryControllerTest {
     private String workerUrl;
 
     @BeforeEach
-    void setUp() {
+    // If exception is thrown something is wrong with the test, so just allow it to raise.
+    void setUp() throws Exception {
         EnqueueResponse mockedResponse = Mockito.mock(EnqueueResponse.class);
         CompletableFuture<EnqueueResponse> mockedFuture = CompletableFuture.completedFuture(mockedResponse);
         when(grpcClient.buildTaskStub(anyString(), anyString(), any())).thenReturn(mockedFuture);
@@ -142,14 +143,10 @@ public class QueryControllerTest {
                 contentType,
                 fileBytes
             );
+            ResultModel res = new ResultModel.Pending(UUID.randomUUID(), "fileHash");
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.empty());
-            when(queryService.createTask(eq(hash), any())).thenAnswer(invocation -> {
-                // Get args (fileHash and taskId)
-                String fileHash = invocation.getArgument(0);
-                UUID taskId = invocation.getArgument(1);
-                return new ResultModel.Pending(taskId, fileHash);
-            });
+            when(queryService.createTask(hash)).thenReturn(res);
             
             FileMetadataModel metadata = new FileMetadataModel(
                 file.getName(),
@@ -162,7 +159,7 @@ public class QueryControllerTest {
             mockMvc.perform(MockMvcRequestBuilders.multipart("/api/query")
                 .file(file)
             ).andExpect(status().isAccepted())
-            .andExpect(jsonPath("$.taskId").value(matchesPattern("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$")));
+            .andExpect(jsonPath("$.taskId").value(res.taskId().toString()));
         });
     }
 
@@ -181,9 +178,7 @@ public class QueryControllerTest {
                 fileBytes
             );
 
-            Map<String, Object> result = Map.of(
-                "key", "val"
-            );
+            ResultModel result = new ResultModel.Pending(UUID.randomUUID(), "fileHash");
 
             when(queryService.hashFile(fileBytes)).thenReturn(hash);
             when(queryService.checkHash(hash)).thenReturn(Optional.of(result));
@@ -192,12 +187,53 @@ public class QueryControllerTest {
             ).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
 
-            Map<String, Object> responseMap = objectMapper.readValue(response, new TypeReference<Map<String, Object>>(){});
+            ResultModel responseMap = objectMapper.readValue(response, new TypeReference<ResultModel.Pending>(){});
             
             assertEquals(
                 result,
                 responseMap
             );
+        });
+    }
+
+    @Test
+    void testTaskRemovedOnGrpcError () {
+        assertDoesNotThrow(() -> {
+            // Setup values
+            String hash = "a".repeat(64);
+            String contentType = MediaTypeFactory.getMediaType(sampleMp3.getFilename())
+                .orElse(MediaType.APPLICATION_OCTET_STREAM).toString();
+            byte[] fileBytes = sampleMp3.getContentAsByteArray();
+
+            MockMultipartFile file = new MockMultipartFile(
+                "file",
+                sampleMp3.getFilename(),
+                contentType,
+                fileBytes
+            );
+
+            FileMetadataModel metadata = new FileMetadataModel(
+                file.getName(),
+                file.getSize(),
+                file.getContentType()
+            );
+
+            ResultModel result = new ResultModel.Pending(UUID.randomUUID(), "fileHash");
+
+            // Set mocked outputs
+            when(queryService.hashFile(fileBytes)).thenReturn(hash);
+            when(queryService.checkHash(hash)).thenReturn(Optional.empty());
+            when(queryService.saveFile(hash, fileBytes, metadata)).thenReturn(true);
+            when(queryService.createTask(hash)).thenReturn(result);
+            // Throw on grpc stub to test the task is deleted
+            when(grpcClient.buildTaskStub(anyString(), anyString(), any())).thenThrow(new Exception());
+            
+            // get and verify response
+            mockMvc.perform(MockMvcRequestBuilders.multipart("/api/query")
+                .file(file)
+            ).andExpect(status().isInternalServerError());
+            
+            verify(queryService).deleteTask(result.taskId());
         });
     }
 }

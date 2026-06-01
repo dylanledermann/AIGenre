@@ -45,6 +45,13 @@ class Settings:
         self.backend_port = int(os.getenv('BACKEND_PORT'))
         self.backend_db = os.getenv('BACKEND_DB', '0')
 
+        # Minio object storage
+        self.minio_endpoint = os.getenv('MINIO_HOST')
+        self.minio_access_key = os.getenv('MINIO_ROOT_USER')
+        self.minio_secret_key = os.getenv('MINIO_ROOT_PASSWORD')
+        # secure flag in minio indicates whether https or http (Since this is using docker containers interconnections secure is false)
+        self.minio_secure = os.getenv('MINIO_SECURE', 'False').lower() == "true"
+
     def model_config(self) -> dict[str, str | int | float]:
         return {
             'path': self.model_path,
@@ -91,4 +98,12 @@ class Settings:
             'host': self.backend_host,
             'port': self.backend_port,
             'db': self.backend_db,
+        }
+    
+    def minio_config(self) -> dict[str, str]:
+        return {
+            'endpoint': self.minio_endpoint,
+            'access_key': self.minio_access_key,
+            'secret_key': self.minio_secret_key,
+            'secure': self.minio_secure
         }

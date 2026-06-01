@@ -2,10 +2,6 @@
 FROM maven:3.9.16-eclipse-temurin-26-noble AS builder
 WORKDIR /app
 
-# Create user group
-RUN addgroup --system --gid 1001 appgroup && \
-    adduser --system --uid 1001 appuser
-
 # Copy only the pom.xml to leverage Docker cache for dependencies
 COPY pom.xml .
 RUN mvn dependency:go-offline
@@ -17,10 +13,15 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:26-jre-alpine
 WORKDIR /app
 
+# Use builder values
 COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8080
 
+# Create user group
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --ingroup appgroup --uid 1001 appuser
+
 USER appuser
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-jar", "app.jar"]

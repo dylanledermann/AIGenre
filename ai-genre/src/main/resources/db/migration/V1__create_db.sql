@@ -6,8 +6,8 @@ CREATE TABLE uploads (
 
 CREATE TABLE audio_results (
     task_id UUID PRIMARY KEY,
-    sample_hash CHAR(64) UNIQUE,
-    file_hash CHAR(64) REFERENCES uploads(file_hash) NOT NULL UNIQUE,
+    sample_hash CHAR(64),
+    file_hash CHAR(64) REFERENCES uploads(file_hash) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
         CHECK (status in ('PENDING', 'PROCESSING', 'COMPLETE', 'FAILED')),
     error TEXT,

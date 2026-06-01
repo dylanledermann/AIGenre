@@ -49,6 +49,7 @@ public class CeleryResultSubscriber implements MessageListener {
     public void onMessage(Message message, byte @Nullable [] pattern) {
         String body = new String(message.getBody());
 
+        // Convert string to expected object
         CeleryMessage messageObject;
         try {
             messageObject = objectMapper.readValue(body, CeleryMessage.class);
@@ -57,12 +58,15 @@ public class CeleryResultSubscriber implements MessageListener {
             return;
         }
 
+        // validate the object fields are correct
         Set<ConstraintViolation<CeleryMessage>> messageViolations = validator.validate(messageObject);
         if(!messageViolations.isEmpty()) {
             log.error("Invalid message from Celery: {}", messageViolations);
             return;
         }
 
+        // Convert generic message object to object specific to the given status.
+        // Makes sure the given status has all the expected values (complete has results and failed has error)
         ResultModel result;
         try {
             result = messageObject.toResultModel();
@@ -74,17 +78,20 @@ public class CeleryResultSubscriber implements MessageListener {
             return;
         }
 
+        // Validate message
         Set<String> resultViolations = result.validate();
         if(!resultViolations.isEmpty()) {
             log.error("Invalid results from Celery: {}", resultViolations);
             return;
         }
 
+        // send and cache the results indicating if an error occurred
+        // only cache successful values, since they are the only values that will not change/require immediate cache invalidation
         switch (result) {
             case ResultModel.Pending r -> pushResult(r.taskId(), r.status(), null, null);
             case ResultModel.Processing r -> pushResult(r.taskId(), r.status(), null, null);
             case ResultModel.Complete r -> {
-                cacheResult(r.fileHash(), r.taskId(), r.result());
+                cacheResult(r.fileHash(), r.taskId(), r);
                 pushResult(r.taskId(), r.status(), r.result(), null);
             }
             case ResultModel.Failed r -> {
@@ -95,11 +102,13 @@ public class CeleryResultSubscriber implements MessageListener {
     }
 
     private void pushResult(UUID taskId, String status, Object result, String error) {
+        // Create payload including only necessary values (no null values) then send on websocket
         Map<String, Object> payload = new HashMap<>();
+        payload.put("taskId", taskId);
         payload.put("status", status);
         if (result != null) payload.put("results", result);
         if (error != null) payload.put("error", error);
-        wsTemplate.convertAndSend("topic/results/" + taskId, (Object) payload);
+        wsTemplate.convertAndSend("/topic/results/" + taskId, (Object) payload);
     }
 
     private void cacheResult(String fileHash, UUID taskId, Object result) {

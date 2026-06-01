@@ -13,6 +13,7 @@ FILE_BYTES_INPUT=b'sampled'
 RUN_INPUT=np.array([1, 2, 3])
 TASK_ID = 'task-123'
 FILE_HASH = 'file-hash-abc'
+BUCKET = 'bucket'
 
 @pytest.fixture(scope='module', autouse=True)
 def start_settings():
@@ -34,6 +35,11 @@ def mock_db():
         }
 
 @pytest.fixture
+def mock_object_storage():
+    with patch('src.tasks.inference_task.get_file', return_value=True) as mock_get_file:
+        yield mock_get_file
+
+@pytest.fixture
 def mock_inference():
     with patch('src.tasks.inference_task.sample_file_bytes', return_value=FILE_BYTES_INPUT) as mock_sample, \
         patch('src.tasks.inference_task.get_audio_hash', return_value='audio-hash-abc') as mock_hash, \
@@ -48,7 +54,7 @@ def mock_inference():
 
 @pytest.fixture
 def mock_create_file():
-    temp_path = 'file'
+    temp_path = f"./src/tmp/{TASK_ID}"
     with open(temp_path, 'wb') as file:
         file.write(temp_path.encode())
 
@@ -60,26 +66,26 @@ def mock_create_file():
 class TestInferenceTaskFileNotFound:
 
     def test_publishes_failed_status(self, mock_broker, mock_db, mock_inference):
-
-        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': "some path"})
-
-        published = json.loads(mock_broker.publish.call_args[0][1])
-
-        # Make sure status is updated and published, then the task ends
-        mock_db['update_status'].assert_called_once_with(TASK_ID, 'FAILED', error=ANY)
-        mock_inference['run'].assert_not_called()
-        assert published['task_id'] == TASK_ID
-        assert published['status'] == 'FAILED'
+        # Mock the get_file to return false
+        with patch('src.tasks.inference_task.get_file', return_value=False) as mock_object_storage_false:
+            inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'bucket': BUCKET, 'object_name': TASK_ID})
+            published = json.loads(mock_broker.publish.call_args[0][1])
+            # Make sure status is updated and published, then the task ends
+            mock_db['update_status'].assert_called_once_with(TASK_ID, 'FAILED', error=ANY)
+            mock_object_storage_false.assert_called_once_with(BUCKET, TASK_ID, f"./src/tmp/{TASK_ID}")
+            mock_inference['run'].assert_not_called()
+            assert published['task_id'] == TASK_ID
+            assert published['status'] == 'FAILED'
 
 
 class TestInferenceTaskCacheHit:
-    def test_publishes_cached_result(self, mock_broker, mock_db, mock_inference, mock_create_file):
+    def test_publishes_cached_result(self, mock_broker, mock_db, mock_inference, mock_create_file, mock_object_storage):
         mock_db['query_audio_results'].return_value = {
             'status': 'COMPLETE',
             'results': {'genre': 'Rock', 'accuracy': '0.95'}
         }
 
-        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': mock_create_file})
+        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'bucket': BUCKET, 'object_name': TASK_ID})
 
         # Check published with correct values
         published = json.loads(mock_broker.publish.call_args[0][1])
@@ -90,10 +96,10 @@ class TestInferenceTaskCacheHit:
         mock_inference['run'].assert_not_called()
 
 class TestInferenceTaskFullRun:
-    def test_publishes_processing_then_complete(self, mock_broker, mock_db, mock_inference, mock_create_file):
+    def test_publishes_processing_then_complete(self, mock_broker, mock_db, mock_inference, mock_create_file, mock_object_storage):
         mock_db['query_audio_results'].return_value = None
 
-        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'file_path': mock_create_file})
+        inference_task.apply(kwargs={'task_id': TASK_ID, 'file_hash': FILE_HASH, 'bucket': BUCKET, 'object_name': TASK_ID})
 
         # Check broker publish
         calls = [json.loads(c[0][1]) for c in mock_broker.publish.call_args_list]

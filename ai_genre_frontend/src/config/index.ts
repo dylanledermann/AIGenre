@@ -1,8 +1,9 @@
 const config = {
   api: {
-    baseUrl: String(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'),
+    baseUrl: String(import.meta.env.VITE_API_BASE_URL ?? '/api'),
     timeout: 10_000,
-    websocketBaseUrl: String(import.meta.env.VITE_API_WEBSOCKET_BASE_URL ?? 'ws://localhost:8000'),
+    websocketBaseUrl: String(import.meta.env.VITE_API_WEBSOCKET_BASE_URL ?? 'ws://localhost/ws'),
+    websocketTopic: String(import.meta.env.VITE_API_WEBSOCKET_TOPIC ?? '/topic/results'),
   },
   query: {
     staleTime: 300_000, // 5 minutes

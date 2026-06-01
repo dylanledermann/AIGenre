@@ -24,7 +24,10 @@ const DragNDrop = ({ file, setFile, setError }: DragNDropProps) => {
       setError('Invalid file type — please upload an audio file.');
       return;
     }
+
+    // Set the file and reset the ref (Allows for re-adding the same image on upload/removal).
     setFile(incoming);
+    if (inputRef.current) inputRef.current.value = '';
     setError(null);
   };
 

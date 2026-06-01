@@ -23,7 +23,14 @@ public class SecurityConfig {
         return http
             .cors(cors -> cors.configurationSource(corsFilter()))
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .authorizeHttpRequests(auth -> 
+                auth
+                    .requestMatchers("/ws/**").permitAll()
+                    .anyRequest().permitAll()    
+            )
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.disable())
+            )
             .build();
     }
 

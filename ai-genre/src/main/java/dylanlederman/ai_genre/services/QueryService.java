@@ -1,7 +1,6 @@
 package dylanlederman.ai_genre.services;
 
 import java.security.MessageDigest;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -52,26 +51,37 @@ public class QueryService {
         return hexString.toString();
     }
 
-    public Optional<Map<String, Object>> checkHash(String hash) {
+    /**
+     * Checks if the given hash already exists in the cache or db.
+     * If the hash already exists, return the results if completed, the task id if pending or processing.
+     * If failed, the task will be reran
+     * @param hash (String) the hash of the file to be checked
+     * @return (Optional<ResultModel>) Optional containing the result model if complete, pending, or processing, otherwise empty.
+     */
+    public Optional<ResultModel> checkHash(String hash) {
         String cached = redisTemplate.opsForValue().get("result:" + hash);
         Optional<ResultModel> dbResult;
         ResultModel result;
 
         if (cached != null) {
+            // Convert cached value to ResultModel (only complete is cached)
             try {
                 result = objectMapper.readValue(cached, ResultModel.Complete.class);
             } catch (Exception e) {
                 log.error("Malformed cached value: file hash={} result={}", hash, cached);
+                // Delete invalid cached values
+                redisTemplate.delete("result:" + hash);
                 return Optional.empty();
             }
-        } else if ((dbResult = queryRepo.getByFileHash(hash)).isPresent()) {
+        } else if ((dbResult = queryRepo.getResultsByFileHash(hash)).isPresent()) {
+            // Check if db contains fileHash
             result = dbResult.get();
         } else {
             return Optional.empty();
         }
 
+        // Validate the result for the ResultModel fields
         Set<String> resultViolations = result.validate();
-
         if(!resultViolations.isEmpty()) {
             log.error("Invalid saved results violations={}", resultViolations);
             return Optional.empty();
@@ -80,20 +90,16 @@ public class QueryService {
         // Only cache complete results (They should not change)
         if (result instanceof ResultModel.Complete) {
             cacheResult(result);
+        } else if (result instanceof ResultModel.Failed) {
+            // If the task failed, a new one should be started
+            return Optional.empty();
         }
 
-        return Optional.of(resultModelToMap(result));
+        // Returned cached result
+        return Optional.of(result);
     }
 
-    private Map<String, Object> resultModelToMap(ResultModel result) {
-        return switch(result) {
-            case ResultModel.Pending r: yield Map.of("task_id", r.taskId(), "status", r.status());
-            case ResultModel.Processing r: yield Map.of("task_id", r.taskId(), "status", r.status());
-            case ResultModel.Complete r: yield Map.of("status", r.status(), "result", r.result());
-            case ResultModel.Failed r: yield Map.of("status", r.status(), "error", r.error());
-        };
-    }
-
+    // Private function that caches the given ResultModel.
     private void cacheResult(ResultModel result) {
         try {
             redisTemplate.opsForValue().set("result:" + result.fileHash(), objectMapper.writeValueAsString(result), ttl);
@@ -102,32 +108,46 @@ public class QueryService {
         }
     }
 
+    /**
+     * Validates and saves the given file information to the database
+     * @param hash (String) hash of the file
+     * @param mp3_bytes (byte[]) byte array for the file
+     * @param metadata (FileMetadataModel) Object containing information about the file (length, mimetype, etc.)
+     * @return boolean indicating whether the file was saved or not as true or false respectively.
+     */
     public boolean saveFile(String hash, byte[] mp3_bytes, FileMetadataModel metadata) {
+        // Validate the all inputs
         if (
-            !hash.matches("^[0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12}$") ||
+            !hash.matches("^[0-9a-f]{64}$") ||
             mp3_bytes.length == 0 ||
-            !metadata.getMimeType().matches("^audio\\/((x-)?wav|mpeg|ogg|(x\\-)?flac|x\\-m4a|mp4a-latm|aac|(x\\-)?aiff)$")
+            !metadata.getMimeType().matches("^audio\\/((x-)?wav|mpeg|ogg|(x-)?flac|x-m4a|mp4a-latm|aac|(x-)?aiff)$")
         ) {
             return false;
         }
 
+        // Create UploadModel from the inputs and save the file
         UploadModel upload = new UploadModel(hash, metadata);
 
         queryRepo.insertFile(upload);
         return true;
     }
 
-    public ResultModel createTask(String fileHash, UUID taskId) {
-        Optional<ResultModel> res = queryRepo.getByFileHash(fileHash);
-        if (res.isPresent()) {
-            ResultModel result = res.get();
-            if (result instanceof ResultModel.Failed) queryRepo.resetTask(fileHash, taskId);
-            else {
-                if (result instanceof ResultModel.Complete) cacheResult(result);
-                return result;
-            }
-        }
+    /**
+     * Creates a new task for the given fileHash
+     * @param fileHash (String) hash of file the task is being created for
+     * @return ResultModel.Pending for the task
+     */
+    public ResultModel createTask(String fileHash) {
+        UUID taskId = UUID.randomUUID();
         queryRepo.insertTask(fileHash, taskId);
         return new ResultModel.Pending(taskId, fileHash);
+    }
+
+    /**
+     * Deletes a task from the database
+     * @param taskId (UUID) task to be deleted
+     */
+    public void deleteTask(UUID taskId) {
+        queryRepo.deleteTask(taskId);
     }
 }

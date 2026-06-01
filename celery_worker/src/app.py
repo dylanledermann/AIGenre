@@ -5,7 +5,13 @@ import grpc
 from src.generated_sources import inference_pb2_grpc
 from src.grpc.InferenceService import InferenceService
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def serve():
+    # initialize settings and Minio connection for the server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
     inference_pb2_grpc.add_InferenceServiceServicer_to_server(
         InferenceService(), server
@@ -22,4 +28,5 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == "__main__":
+    logger.info("Starting server")
     serve()
