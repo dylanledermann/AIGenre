@@ -1,4 +1,3 @@
-import {ws} from 'msw';
 import { useWebsockets } from '../WebsocketContext';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import WebsocketProvider from './WebsocketProvider';
