@@ -12,6 +12,25 @@ from torchvision import transforms
 from src.config.settings import get_settings
 from src.ai_model.model import get_model
 
+idxToGenre = [
+    'Blue',
+    'Classical',
+    'Country',
+    'Easy Listening',
+    'Electronic',
+    'Experimental',
+    'Folk',
+    'Hip-Hop',
+    'Instrumental',
+    'International',
+    'Jazz',
+    'Old-Time / Historic',
+    'Pop',
+    'Rock',
+    'Soul-RnB',
+    'Spoken'
+]
+
 def sample_file_bytes(file_bytes: bytes) -> np.ndarray:
     spect_config = get_settings().spectrogram_config()
     audio, _ = librosa.load(io.BytesIO(file_bytes), sr=spect_config['sample_rate'], mono=True)
@@ -79,4 +98,5 @@ def run_analysis(spectrogram: np.ndarray) -> tuple[str, str]:
 
     probs = torch.softmax(out, -1)
     genre, accuracy = torch.argmax(probs), torch.max(probs)
-    return str(genre.item()), str(accuracy.item())
+    # Convert genre idx to string
+    return idxToGenre[genre.item()], str(accuracy.item())
