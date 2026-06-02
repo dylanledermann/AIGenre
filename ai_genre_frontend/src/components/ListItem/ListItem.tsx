@@ -42,7 +42,7 @@ const ListItem = ({ taskId, connection }: ListItemProps) => {
         )}
         {!error && results && (
           <span className={styles.result}>
-            Genre: {results.genre}, Confidence: {results.accuracy}
+            Genre: {results.genre}, Confidence: {parseFloat(results.accuracy).toFixed(2)}
           </span>
         )}
       </div>

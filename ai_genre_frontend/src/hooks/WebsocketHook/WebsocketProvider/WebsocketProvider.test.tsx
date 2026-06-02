@@ -5,7 +5,7 @@ import WebsocketProvider from './WebsocketProvider';
 import '@testing-library/jest-dom';
 import { type ReactNode } from 'react';
 import { WebsocketStatuses, type WebsocketData } from '../../../types/WebsocketTypes/WebsocketTypes';
-import { WS_URL, server } from '../../../__tests__/WebsocketServerSetup';
+import { WS_URL, createAndCloseServer, createAndErrorServer, createStompServer, server } from '../../../__tests__/WebsocketServerSetup';
 
 // Base wrapper for the provider
 const wrapper = ({children}: {children: ReactNode}) => (
@@ -20,12 +20,9 @@ describe('WebsocketProvider', () => {
         it('opens websocket', async () => {
             // Create task id and server config for websocket listening
             const taskId = 'task-1';
-            const url = `${WS_URL}/${taskId}`;
+            const url = `${WS_URL}`;
             server.use(
-                ws.link(url).addEventListener(
-                    'connection',
-                    () => {},
-                ),
+                createStompServer(WS_URL, () => {}),
             );
 
             // act() ensures the setup runs after the websocket setup is complete
@@ -49,15 +46,15 @@ describe('WebsocketProvider', () => {
         it('updates values on websocket message', async () => {
             // Create task id and server config for websocket listening and message to be sent
             const taskId = 'task-1';
-            const url = `${WS_URL}/${taskId}`;
+            const url = `${WS_URL}`;
             const completeMessage = {status: 'COMPLETE', results: {genre: 'GENRE', accuracy: 'ACC'}};
             server.use(
-                ws.link(url).addEventListener(
-                    'connection',
-                    ({client}) => {
-                        client.send(JSON.stringify(completeMessage));
-                    },
-                ),
+                createStompServer(WS_URL, ({send}) => {
+                    send({
+                        taskId: taskId,
+                        ...completeMessage
+                    })
+                }),
             );
 
             // act() ensures the setup runs after the websocket setup is complete
@@ -81,14 +78,11 @@ describe('WebsocketProvider', () => {
         it('handles invalid JSON messages', async () => {
             // Create task id and server config for websocket listening
             const taskId = 'task-1';
-            const url = `${WS_URL}/${taskId}`;
+            const url = `${WS_URL}`;
             server.use(
-                ws.link(url).addEventListener(
-                    'connection',
-                    ({client}) => {
-                        client.send('INVALID JSON }{}{}{}}}}');
-                    },
-                ),
+                createStompServer(WS_URL, ({send}) => {
+                    send('INVALID JSON }{}{}{}}}}');
+                }),
             );
 
             // act() ensures the setup runs after the websocket setup is complete
@@ -113,14 +107,9 @@ describe('WebsocketProvider', () => {
         it('updates state on premature closing from the server', async () => {
             // Create task and websocket server
             const taskId = 'task-1';
-            const url = `${WS_URL}/${taskId}`;
+            const url = `${WS_URL}`;
             server.use(
-                ws.link(url).addEventListener(
-                    'connection',
-                    ({client}) => {
-                        client.close();
-                    },
-                ),
+                createAndCloseServer(WS_URL),
             );
 
             // act() ensures the setup runs after the websocket setup is complete
@@ -144,15 +133,10 @@ describe('WebsocketProvider', () => {
 
         it('updates websocket state on websocket error', async () => {
             const taskId = 'task-1';
-            const url = `${WS_URL}/${taskId}`;
+            const url = `${WS_URL}`;
             // Throw error from server to trigger onerror() on the client
             server.use(
-                ws.link(url).addEventListener(
-                    'connection',
-                    () => {
-                        throw new Error('Error to test onerror');
-                    }
-                ),
+                createAndErrorServer(WS_URL),
             );
 
             const {result} = setup();
@@ -193,15 +177,15 @@ describe('WebsocketProvider', () => {
         it('does not re-add previous existing websockets', async () => {
             // Create task and websocket server
             const taskId = 'task-1';
-            const url = `${WS_URL}/${taskId}`;
+            const url = `${WS_URL}`;
             const completeMessage = {status: 'COMPLETE', results: {genre: 'GENRE', accuracy: 'ACC'}};
             server.use(
-                ws.link(url).addEventListener(
-                    'connection',
-                    ({client}) => {
-                        client.send(JSON.stringify(completeMessage));
-                    },
-                ),
+                createStompServer(WS_URL, ({send}) => {
+                    send({
+                        taskId: taskId,
+                        ...completeMessage
+                    });
+                }),
             );
 
             // act() ensures the setup runs after the websocket setup is complete

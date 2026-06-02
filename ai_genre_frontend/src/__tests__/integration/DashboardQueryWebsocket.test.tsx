@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import {BASE_URL, server, WS_URL} from '../WebsocketServerSetup';
+import {BASE_URL, createStompServer, server, WS_URL} from '../WebsocketServerSetup';
 import WebsocketProvider from '../../hooks/WebsocketHook/WebsocketProvider/WebsocketProvider';
 import { render, waitFor, screen } from '@testing-library/react';
 import Dashboard from '../../pages/Dashboard';
@@ -50,13 +50,12 @@ describe('DashboardQueryWebsocket', () => {
 
             // default values to be used
             const taskId = 'task-1';
-            const url = `${config.api.websocketBaseUrl}/topic/results/${taskId}`;
 
             // spy on fetch and websocket
             const fetchSpy = vi.fn();
             const wsSpy = vi.fn();
             server.use(
-                http.post(`${BASE_URL}/api/query`, () => {
+                http.post(`${BASE_URL}/query`, () => {
                     fetchSpy();
                     return HttpResponse.json({
                         taskId: taskId,
@@ -65,10 +64,9 @@ describe('DashboardQueryWebsocket', () => {
                         error: null,
                     });
                 }),
-                ws.link(url).addEventListener(
-                    'connection',
-                    () => {wsSpy();},
-                ),
+                createStompServer(WS_URL, () => {
+                   wsSpy(); 
+                }),
             );
 
             // File to be uploaded and input element
@@ -105,7 +103,7 @@ describe('DashboardQueryWebsocket', () => {
             const fetchSpy = vi.fn();
             const wsSpy = vi.fn();
             server.use(
-                http.post(`${BASE_URL}/api/query`, () => {
+                http.post(`${BASE_URL}/query`, () => {
                     fetchSpy();
                     return HttpResponse.json({
                         taskId: taskId,
@@ -117,12 +115,9 @@ describe('DashboardQueryWebsocket', () => {
                         error: null,
                     });
                 }),
-                ws.link(url).addEventListener(
-                    'connection',
-                    () => {
-                        wsSpy();
-                    },
-                ),
+                createStompServer(WS_URL, () => {
+                    wsSpy();
+                }),
             );
 
             // File to be uploaded and input element
@@ -160,7 +155,7 @@ describe('DashboardQueryWebsocket', () => {
             const fetchSpy = vi.fn();
             const wsSpy = vi.fn();
             server.use(
-                http.post(`${BASE_URL}/api/query`, () => {
+                http.post(`${BASE_URL}/query`, () => {
                     fetchSpy();
                     return HttpResponse.json({
                         taskId: taskId,
@@ -169,13 +164,13 @@ describe('DashboardQueryWebsocket', () => {
                         error: null,
                     });
                 }),
-                ws.link(url).addEventListener(
-                    'connection',
-                    ({client}) => {
-                        wsSpy();
-                        client.send(JSON.stringify(completeMessage));
-                    },
-                ),
+                createStompServer(WS_URL, ({send}) => {
+                    wsSpy();
+                    send({
+                        taskId: taskId,
+                        ...completeMessage
+                    });
+                }),
             );
 
             // File to be uploaded and input element

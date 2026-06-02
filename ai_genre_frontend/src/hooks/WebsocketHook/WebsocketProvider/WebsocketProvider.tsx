@@ -62,13 +62,10 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
             updateState(taskId, { status: WebsocketStatuses.PENDING });
 
             // Subscribe to the topic
-            console.log(`Subscribing to topic ${topic}`)
             client.subscribe(topic, (event) => {
               try {
                 // Parse the body and convert status to status type, then update state to the provided state
-                console.log(event.body);
                 const message = JSON.parse(event.body as string) as WebsocketData;
-                console.log(message)
                 message.status = WebsocketStatuses[message.status as unknown as keyof typeof WebsocketStatuses];
                 updateState(taskId, message as Partial<WebsocketState>);
                 if (
@@ -93,6 +90,31 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
             client.deactivate();
           },
 
+          // Server side close
+          onWebSocketClose: () => {
+            console.log("DISCONNECTED");
+            // onclose needs to use the current connections, not the state onopen
+            setConnections(prev => {
+              const current = prev.get(taskId);
+              // Update saved state if task is not finished
+              if (!current || current.status === WebsocketStatuses.COMPLETE || current.status === WebsocketStatuses.FAILED) {
+                return prev;
+              }
+
+              const next = new Map(prev);
+              next.set(taskId, {
+                ...current,
+                status: WebsocketStatuses.FAILED,
+                error: 'Connection closed unexpectedly',
+              });
+              return next;
+            });
+            
+            // Remove the task from the websockets ref
+            websockets.current.delete(taskId);
+          },
+
+          // Client side close
           onDisconnect: () => {
             // onclose needs to use the current connections, not the state onopen
             setConnections(prev => {
