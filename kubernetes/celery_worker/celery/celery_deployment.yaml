@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celeryworker
+  namespace: celery
+  labels:
+    app: celery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+      - name: celery
+        image: <celery-image>
+        envFrom:
+        - secretRef:
+            name: <secret-name>
+        resources:
+          limit:
+            nvidia.com/gpu: 1

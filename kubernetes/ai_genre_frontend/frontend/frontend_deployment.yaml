@@ -1,0 +1,40 @@
+# Frontend Cluster IP
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontendclusterip
+  namespace: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: frontend
+--- # Frontend deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontenddeployment
+  namespace: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: <frontend-image>
+        port:
+        - containerPort: 80
+        envFrom:
+        - secretRef:
+            name: <secret-name>

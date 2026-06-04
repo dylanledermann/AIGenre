@@ -1,0 +1,103 @@
+# Redis Backend the celery published to
+# Redis Cluster IP Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backendbackend
+  namespace: backend
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: redis
+  clusterIP: None # ip binds to app name
+  selector:
+    app: redis
+    statefuleset.kubernetes.io/pod-name: redis-0
+--- # Redis Config Map
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backendbackendconfig
+  namespace: backend
+  labels:
+    app: redis
+data:
+  master.conf: |
+    bind 0.0.0.0
+    protected-mode yes
+    port 6379
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+    daemonize no
+    supervised no
+    pidfile /var/run/redis_6379.pid
+    loglevel notice
+    logfile ""
+  slave.conf: |
+    slaveof redis-0.redis 6379
+--- # Redis Backend
+apiVersion: v1
+kind: StatefulSet
+metadata:
+  name: backendbackend
+  namespace: backend
+  labels:
+    app: redis
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:latest
+        command: ["redis-server"]
+        args: ["/etc/redis.conf"]
+        env:
+        - name: ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        ports:
+        - name: redis
+          containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: conf
+          mountPath: /etc
+          subPath: redis.conf
+      initContainers:
+      - name: initredis
+        image: redis:latest
+        command:
+        - bash
+        - "-c"
+        - |
+          # Generate mysql server-id from pod ordinal index. 
+          # Determines if this is master or slave node.
+          [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
+          ordinal=${BASH_REMATCH[1]}
+          # Copy appropriate conf.d files from config map to emptyDir.
+          if [[ $ordinal -eq 0 ]]; then
+            cp /mnt/config-map/master.conf /etc/redis.conf
+          else
+            cp /mnt/config-map/slave.conf /etc/redis.conf
+          fi
+        volumeMounts:
+        - name: conf
+          mountPath: /etc
+          subPath: redis.conf
+        - name: config-map
+          mountPath: /mnt/config-map
+          ConfigMap:
+            name: backendcacheconfig

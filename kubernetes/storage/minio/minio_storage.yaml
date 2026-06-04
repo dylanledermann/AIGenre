@@ -1,0 +1,31 @@
+apiVersion: minio.min.io/v2
+kind: Tenant
+metadata:
+  name: miniostorage
+  namespace: celery
+  metadata:
+    app: minio
+spec:
+  pools:
+    - name: pool-0
+      servers: 4
+      volumesPerServer: 2
+      volumesClaimTemplate:
+        metadata:
+          name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce # Only one node has read/write access
+          resources:
+            requests:
+            storage: 2Gi # 2 Gegibytes
+      containerSecurityContext: # Run as non root user/group
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        allowPrivelegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault

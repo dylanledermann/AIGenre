@@ -1,0 +1,11 @@
+# Postgres DB
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: backend
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:latest
+  storage:
+    size: 5Gi # 5 Gegibytes of storage
