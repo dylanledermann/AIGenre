@@ -3,9 +3,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
   name: frontendgatewayclass
-  namespace: frontend
 spec:
-  controllerName: <host>/gateway-controller
+  controllerName: example.com/gateway-controller
 --- # Frontend Gateway
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -19,9 +18,9 @@ spec:
     port: 80
     protocol: HTTP
     allowedRoutes:
-      namespaces: # Only allows routes from the same namespace
+      namespaces:
         from: same
---- # Frontend Http Route
+--- # Frontend HTTPRoute
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -31,12 +30,12 @@ spec:
   parentRefs:
   - name: frontendgateway
   hostnames:
-  - <host>
+  - example.com
   rules:
   - matches:
     - path:
         type: PathPrefix
-        value: /api
-  - backendRefs:
-    - name: backend
-      port: 8080
+        value: /
+    backendRefs:
+    - name: frontend
+      port: 80

@@ -1,0 +1,8 @@
+# Create Minio DirectPV storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: directpv-min-io
+provisioner: dir.pv.min.io
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain

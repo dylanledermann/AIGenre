@@ -3,7 +3,7 @@ kind: Tenant
 metadata:
   name: miniostorage
   namespace: celery
-  metadata:
+  labels:
     app: minio
 spec:
   pools:
@@ -18,12 +18,12 @@ spec:
             - ReadWriteOnce # Only one node has read/write access
           resources:
             requests:
-            storage: 2Gi # 2 Gegibytes
+              storage: 2Gi # 2 Gibibytes
       containerSecurityContext: # Run as non root user/group
         runAsUser: 1000
         runAsGroup: 1000
         runAsNonRoot: true
-        allowPrivelegeEscalation: false
+        allowPrivilegeEscalation: false
         capabilities:
           drop:
             - ALL

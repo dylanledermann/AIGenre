@@ -22,5 +22,5 @@ spec:
         - secretRef:
             name: <secret-name>
         resources:
-          limit:
+          limits:
             nvidia.com/gpu: 1

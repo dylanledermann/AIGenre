@@ -2,17 +2,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: backendclusterip
-  namespace: grpc
+  name: backend
+  namespace: backend
 spec:
   type: ClusterIP
   selector:
     app: backend
-  port:
-  - containerPort: 8080
-    protocol: TCP
+  ports:
+  - protocol: TCP
     port: 8080
-    target: 8080
+    targetPort: 8080
 --- # Backend Deployment
 apiVersion: apps/v1
 kind: Deployment

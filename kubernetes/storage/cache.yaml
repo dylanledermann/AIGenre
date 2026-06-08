@@ -1,26 +1,25 @@
-# Redis Cluster IP Service
+# Redis cache service for the application
 apiVersion: v1
 kind: Service
 metadata:
-  name: backendcache
+  name: cache-redis
   namespace: backend
   labels:
     app: redis
 spec:
   type: ClusterIP
+  clusterIP: None
+  selector:
+    app: redis
   ports:
   - protocol: TCP
     port: 6379
     targetPort: redis
-  clusterIP: None # ip binds to app name
-  selector:
-    app: redis
-    statefuleset.kubernetes.io/pod-name: redis-0
---- # Redis Config Map
+--- # Redis ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: backendcacheconfig
+  name: cache-redis-config
   namespace: backend
   labels:
     app: redis
@@ -40,15 +39,15 @@ data:
   slave.conf: |
     slaveof redis-0.redis 6379
 --- # Redis Cache
-apiVersion: v1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: backendcache
+  name: cache-redis
   namespace: backend
   labels:
     app: redis
 spec:
-  serviceName: redis
+  serviceName: cache-redis
   replicas: 1
   selector:
     matchLabels:
@@ -73,7 +72,7 @@ spec:
         - name: redis-data
           mountPath: /data
         - name: conf
-          mountPath: /etc
+          mountPath: /etc/redis.conf
           subPath: redis.conf
       initContainers:
       - name: initredis
@@ -82,11 +81,8 @@ spec:
         - bash
         - "-c"
         - |
-          # Generate mysql server-id from pod ordinal index. 
-          # Determines if this is master or slave node.
           [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
           ordinal=${BASH_REMATCH[1]}
-          # Copy appropriate conf.d files from config map to emptyDir.
           if [[ $ordinal -eq 0 ]]; then
             cp /mnt/config-map/master.conf /etc/redis.conf
           else
@@ -94,9 +90,15 @@ spec:
           fi
         volumeMounts:
         - name: conf
-          mountPath: /etc
+          mountPath: /etc/redis.conf
           subPath: redis.conf
         - name: config-map
           mountPath: /mnt/config-map
-          ConfigMap:
-            name: backendcacheconfig
+      volumes:
+      - name: redis-data
+        emptyDir: {}
+      - name: conf
+        emptyDir: {}
+      - name: config-map
+        configMap:
+          name: cache-redis-config

@@ -5,7 +5,8 @@ metadata:
   name: postgres
   namespace: backend
 spec:
-  instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:latest
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:18
   storage:
-    size: 5Gi # 5 Gegibytes of storage
+    size: 5Gi # 5 Gibibytes of storage
+    storageClass: local-path  

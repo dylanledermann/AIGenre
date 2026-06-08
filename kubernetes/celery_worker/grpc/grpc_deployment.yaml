@@ -1,8 +1,8 @@
 # gRPC Cluster IP
-apiVersion: apps/v1
+apiVersion: v1
 kind: Service
 metadata:
-  name: grpcclusterip
+  name: grpc
   namespace: celery
 spec:
   type: ClusterIP
@@ -11,7 +11,7 @@ spec:
   ports:
   - protocol: TCP
     port: 50051
-    targetPort: grpc
+    targetPort: 50051
 --- # gRPC Server
 apiVersion: apps/v1
 kind: Deployment
@@ -36,5 +36,5 @@ spec:
         ports:
         - containerPort: 50051
         envFrom:
-        - secretFrom:
+        - secretRef:
             name: <secret-name>
