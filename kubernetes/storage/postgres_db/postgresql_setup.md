@@ -17,6 +17,12 @@ helm upgrade --install cnpg \
   cnpg/cloudnative-pg
 ```
 
+The current postgres db uses local path, which can be installed from rancher:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+```
+
 After the operator is installed, apply the PostgreSQL custom resource:
 
 ```bash
