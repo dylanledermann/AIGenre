@@ -1,11 +1,11 @@
 objectStore:
    name: miniostorage # name of the AIStor Server
    pools:
-   - name: pool-0
-     servers: 1 # Number of servers/pods to deploy
-     volumesPerServer: 2 # Number of Persistent Volumes per Server/Pod
-     size: 2Gi # Size of each PV (2 Gegibytes)
-   storageClassName: directpv-min-io # Storage Class assigned to each PV
+       - name: pool-0
+         servers: 1 # Number of servers/pods to deploy
+         volumesPerServer: 4 # Number of Persistent Volumes per Server/Pod
+         size: 2Gi # Size of each PV (2 Gegibytes)
+         storageClassName: directpv-min-io # Storage Class assigned to each PV
    services:
       minio:
          serviceType: NodePort

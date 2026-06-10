@@ -1,5 +1,5 @@
-apiVersion: minio.min.io/v2
-kind: Tenant
+apiVersion: aistor.min.io/v1
+kind: ObjectStore
 metadata:
   name: miniostorage
   namespace: celery
@@ -8,24 +8,15 @@ metadata:
 spec:
   pools:
     - name: pool-0
-      servers: 4
-      volumesPerServer: 2
+      servers: 1
+      volumesPerServer: 4
       volumesClaimTemplate:
         metadata:
           name: data
         spec:
           accessModes:
             - ReadWriteOnce # Only one node has read/write access
+          storageClass: directpv-min-io
           resources:
             requests:
               storage: 2Gi # 2 Gibibytes
-      containerSecurityContext: # Run as non root user/group
-        runAsUser: 1000
-        runAsGroup: 1000
-        runAsNonRoot: true
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        seccompProfile:
-          type: RuntimeDefault

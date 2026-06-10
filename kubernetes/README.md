@@ -55,6 +55,12 @@ This was mostly done following [Omer Sezer's](https://github.com/omerbsezer/Fast
 multipass launch -n <container-name> -c <number-of-cores> -m <memory> -d <disk-size>
 # Example with 2 cores, 2 gigabytes of memory, and 10 gigabytes of disk space
 multipass launch -n master -c 2 -m 2G -d 10G
+
+# Also create a disk to be used by directpv
+## Create image file
+multipass exec worker -- sudo fallocate -l 5G /var/tmp/directpv.img
+## Map image file to loop device
+multipass exec worker -- sudo losetup --find --show /var/tmp/directpv.img
 ```
 ### Enter Multipass container shell
 ```bash

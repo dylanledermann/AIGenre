@@ -1,21 +1,3 @@
-# RabbitMQ Cluster IP Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: celerybroker
-  namespace: celery
-  labels:
-    app: rabbitmq
-spec:
-  type: ClusterIP
-  clusterIP: None
-  selector:
-    app: rabbitmq
-  ports:
-  - protocol: TCP
-    port: 5672
-    targetPort: 5672
---- # RabbitMQ Broker
 apiVersion: rabbitmq.com/v1beta1
 kind: RabbitmqCluster
 metadata:
@@ -24,11 +6,14 @@ metadata:
   labels:
     app: rabbitmq
 spec:
-  replicas: 3
+  replicas: 1
   resources:
     requests:
-      cpu: 500m # 1/2 cpu core
-      memory: 2Gi # 2 Gibibytes
+      cpu: 500m
+      memory: 2Gi
     limits:
-      cpu: 1 # 1 cpu core limit
-      memory: 2Gi # 2 Gebibytes
+      cpu: 1
+      memory: 2Gi
+  persistence:
+    storageClassName: local-path
+    storage: 2Gi
