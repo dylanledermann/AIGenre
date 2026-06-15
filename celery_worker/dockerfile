@@ -20,11 +20,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 
-USER appuser
-
 # Predownload resnet model on appuser
 RUN python3 -c "import torchvision.models as m; m.resnet18(weights=m.ResNet18_Weights.DEFAULT)"
 
 COPY . .
+
+USER appuser
 
 ENTRYPOINT ["python3", "-m", "celery", "-A", "src.celery_app", "worker", "--concurrency", "1"]

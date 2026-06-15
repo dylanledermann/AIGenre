@@ -54,13 +54,7 @@ This was mostly done following [Omer Sezer's](https://github.com/omerbsezer/Fast
 # Create the nodes
 multipass launch -n <container-name> -c <number-of-cores> -m <memory> -d <disk-size>
 # Example with 2 cores, 2 gigabytes of memory, and 10 gigabytes of disk space
-multipass launch -n master -c 2 -m 2G -d 10G
-
-# Also create a disk to be used by directpv
-## Create image file
-multipass exec worker -- sudo fallocate -l 5G /var/tmp/directpv.img
-## Map image file to loop device
-multipass exec worker -- sudo losetup --find --show /var/tmp/directpv.img
+multipass launch -n master -c 4 -m 2G -m 80G
 ```
 ### Enter Multipass container shell
 ```bash
@@ -126,9 +120,7 @@ sudo apt-get upgrade -y
 sudo apt-get install containerd -y
 # Apply containerd config to root
 sudo mkdir -p /etc/containerd
-sudo su -
-containerd config default | tee /etc/containerd/config.toml
-exit
+sudo containerd config default | tee /etc/containerd/config.toml
 sudo systemctl restart containerd
 
 # Install kubectl following the guide: https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
@@ -244,7 +236,8 @@ sudo apt-get install helm
 ```
 
 #### Install Operators
-The operators and their commands
+
+*Check the each subdirectory's .md for specific info on creating the application.
 
 This repository uses operator-managed custom resources for the following services:
 
@@ -265,6 +258,7 @@ helm upgrade --install cnpg --namespace backend --create-namespace --set config.
 ```bash
 kubectl krew install directpv
 kubectl directpv install
+# MinIO requires 3+ drives
 kubectl directpv discover
 kubectl directpv init drives.yaml
 helm install aistor minio/aistor-operator -n celery --create-namespace --set license="<license>" -f kubernetes/storage/minio/minio_config.yaml
@@ -278,4 +272,39 @@ kubectl apply -f "https://github.com/rabbitmq/cluster-operator/releases/latest/d
 kubectl apply -f kubernetes/storage/postgres_db/postgres_db.yaml
 kubectl apply -f kubernetes/storage/minio/minio_storage.yaml
 kubectl apply -f kubernetes/storage/celery_broker/celery_broker.yaml
+```
+
+#### Create Pods
+
+##### Storage
+For multipass I am using the rancher local-storage and setting it as default storage. 
+The default storage is used for cache.yaml, backend.yaml, the postgres db, and the rabbitmq broker.
+For all pods, you can go through the setup.md file in each repo. If there is not one, you can just apply the manifest with `kubectl apply -f <manifest.yaml>`
+```bash
+# Install rancher local-path
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+
+# Make local-path the default storage class
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+To test the redis containers, or any container in general, create a busybox pod and ping the pod:
+
+```bash
+kubectl run -it --rm busybox --image=busybox --restart=Never -- nslookup backend-redis-0.backend-redis.backend.svc.cluster.local
+# Remove the statefule set name if not a stateful set.
+kubectl run -it --rm busybox --image=busybox --restart=Never -- nslookup <pod-name>.<stateful-set-name>.<namespace>.svc.cluster.local
+```
+
+##### Application
+Create the .env files (should be in each individual folders for isolation) and apply them with 
+`kubectl create secret generic -n <namespace> <secretname> --from-env-file=path/to/env`.
+Install docker:
+```bash
+sudo apt update
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker $USER
+newgrp docker
 ```

@@ -1,0 +1,34 @@
+FROM python:3.11-slim
+
+# Install system dependencies (needed for psycopg)
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create user group
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --gid 1001 appuser
+
+WORKDIR /app
+
+# Create temp file and give the user perms for it
+RUN mkdir -p /app/src/tmp && chown -R appuser:appgroup /app/src/tmp
+
+# Set torch cache to writable tmp directory
+ENV TORCH_HOME=/app/src/tmp
+
+# Copy and install python requirements
+COPY requirements.txt .
+
+# Install modules
+RUN pip install --no-cache-dir -r requirements.txt torch torchvision torchaudio
+
+# Predownload resnet model
+RUN TORCH_HOME=/app/src/tmp python3 -c "import torchvision.models as m; m.resnet18(weights=m.ResNet18_Weights.DEFAULT)"
+
+COPY . .
+
+USER appuser
+
+ENTRYPOINT ["python3", "-m", "celery", "-A", "src.celery_app", "worker", "--concurrency", "1"]

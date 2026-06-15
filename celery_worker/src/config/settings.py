@@ -2,6 +2,7 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 import librosa
+import urllib3
 
 _settings = None
 
@@ -51,6 +52,7 @@ class Settings:
         self.minio_secret_key = os.getenv('MINIO_ROOT_PASSWORD')
         # secure flag in minio indicates whether https or http (Since this is using docker containers interconnections secure is false)
         self.minio_secure = os.getenv('MINIO_SECURE', 'False').lower() == "true"
+        self.minio_cert = os.getenv('MINIO_CA_CERT')
 
     def model_config(self) -> dict[str, str | int | float]:
         return {
@@ -101,9 +103,13 @@ class Settings:
         }
     
     def minio_config(self) -> dict[str, str]:
-        return {
+        config = {
             'endpoint': self.minio_endpoint,
             'access_key': self.minio_access_key,
             'secret_key': self.minio_secret_key,
             'secure': self.minio_secure
         }
+        # Allow for cert or no cert
+        if self.minio_cert:
+            config['http_client'] = urllib3.PoolManager(ca_certs=self.minio_cert)
+        return config

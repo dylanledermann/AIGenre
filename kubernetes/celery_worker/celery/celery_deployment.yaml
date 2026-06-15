@@ -17,10 +17,32 @@ spec:
     spec:
       containers:
       - name: celery
-        image: <celery-image>
+        image: dylhead/ai-genre-celery-cpu # remove cpu if using gpu
         envFrom:
         - secretRef:
-            name: <secret-name>
-        resources:
-          limits:
-            nvidia.com/gpu: 1
+            name: celery
+        # Gpu if using gpu
+        # resources:
+          # limits:
+            # nvidia.com/gpu: 1
+        volumeMounts:
+          - name: minio-ca
+            mountPath: /etc/minio/certs
+        livenessProbe:
+          exec:
+            command: ["bash", "-c", "celery inspect ping -d celery@$HOSTNAME | grep -q pong"]
+          initialDelaySeconds: 45
+          periodSeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command: ["bash", "-c", "celery inspect ping -d celery@$HOSTNAME | grep -q pong"]
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 30
+          failureThreshold: 3
+      volumes:
+        - name: minio-ca
+          secret:
+            secretName: minio-ca
