@@ -32,9 +32,9 @@ spec:
     spec:
       containers:
       - name: grpc
-        image: <grpc-image>
+        image: dylhead/ai-genre-grpc
         ports:
         - containerPort: 50051
         envFrom:
         - secretRef:
-            name: <secret-name>
+            name: celery # Uses the same .env as the celery worker, should be changed in prod to only know rabbitmq connection.
