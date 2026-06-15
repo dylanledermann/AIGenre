@@ -1,9 +1,11 @@
-# Postgres Secret
+# Postgres Secret (Remove this and create secrets in cmd line in production)
 apiVersion: v1
 kind: Secret
 metadata:
   name: postgres
   namespace: backend
+  labels:
+    cnpg.io/reload: "" # Instructs CNPG to auto-reload on changes
 type: kubernetes.io/basic-auth
 stringData:
   username: user
@@ -22,6 +24,8 @@ spec:
   affinity: {}
   bootstrap:
     initdb:
+      database: genre_db
+      owner: user
       secret:
         name: postgres
   
@@ -30,4 +34,5 @@ spec:
     shm: 1Gi
   storage:
     size: 5Gi # 5 Gibibytes of storage
-    storageClass: local-path
+    # Use default storageClass, can add local-path and enforce
+    # storageClass: local-path
