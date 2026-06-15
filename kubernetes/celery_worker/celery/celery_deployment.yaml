@@ -15,6 +15,7 @@ spec:
       labels:
         app: celery
     spec:
+      dnsPolicy: ClusterFirst
       containers:
       - name: celery
         image: dylhead/ai-genre-celery-cpu # remove cpu if using gpu

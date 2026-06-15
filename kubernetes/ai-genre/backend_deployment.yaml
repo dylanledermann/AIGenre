@@ -30,11 +30,12 @@ spec:
       labels:
         app: backend
     spec:
+      dnsPolicy: ClusterFirst
       containers:
       - name: backend
-        image: <backend-image>
+        image: dylhead/ai-genre-spring
         ports:
         - containerPort: 8080
         envFrom:
         - secretRef:
-            name: <secret-name>
+            name: backend

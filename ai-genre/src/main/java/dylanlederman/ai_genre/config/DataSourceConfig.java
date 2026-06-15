@@ -26,6 +26,7 @@ public class DataSourceConfig {
 
     @Bean
     public Flyway initFlyway(DataSource datasource) {
+        log.info(String.format("Connecting to %s, %s:%s", datasourceUrl, datasourceUsername, datasourcePassword));
         Flyway flyway = Flyway
             .configure()
             .dataSource(datasource)

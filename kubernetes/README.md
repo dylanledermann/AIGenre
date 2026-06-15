@@ -299,6 +299,10 @@ kubectl run -it --rm busybox --image=busybox --restart=Never -- nslookup <pod-na
 ##### Application
 Create the .env files (should be in each individual folders for isolation) and apply them with 
 `kubectl create secret generic -n <namespace> <secretname> --from-env-file=path/to/env`.
+
+*Note: For the spring boot application use just the postgres container name with the container e.g. `postgres-rw` instead of
+the full name e.g. `postgres-rw.backend.svc.cluster.local`, since it did not recognize the full name.
+
 Install docker:
 ```bash
 sudo apt update
