@@ -1,0 +1,27 @@
+# cert-issuer.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: minio-selfsigned
+  namespace: celery
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: minio-tls
+  namespace: celery
+spec:
+  secretName: minio-tls
+  issuerRef:
+    name: minio-selfsigned
+    kind: Issuer
+  commonName: minio.celery.svc.cluster.local
+  dnsNames:
+    - minio.celery.svc.cluster.local
+    - minio-hl.celery.svc.cluster.local
+    - "*.celery.svc.cluster.local"
+    - localhost
+  ipAddresses:
+    - 127.0.0.1

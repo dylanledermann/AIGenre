@@ -34,38 +34,6 @@ ls -lh /dev/mapper/directpv-disk1
 # Confirm it shows in lsblk
 lsblk /dev/mapper/directpv-disk1
 
-# Make it persist across reboots
-sudo tee /etc/systemd/system/directpv-disk1.service > /dev/null <<'EOF'
-[Unit]
-Description=Setup dm-linear device for DirectPV disk1
-After=local-fs.target
-Before=kubelet.service
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-
-ExecStart=/bin/bash -c '\
-  LOOP=$(losetup --find --show /data/disk1.img) && \
-  SIZE=$(blockdev --getsz $LOOP) && \
-  echo "0 $SIZE linear $LOOP 0" | dmsetup create directpv-disk1'
-
-ExecStop=/bin/bash -c '\
-  dmsetup remove directpv-disk1; \
-  losetup -d $(losetup -j /data/disk1.img | cut -d: -f1)'
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable and start it
-sudo systemctl daemon-reload
-sudo systemctl enable directpv-disk1.service
-sudo systemctl start directpv-disk1.service
-
-# Verify
-sudo systemctl status directpv-disk1.service
-
 # Add more disks
 # Disk 2
 sudo dd if=/dev/zero bs=1 count=0 seek=10G of=/data/disk2.img
@@ -78,20 +46,36 @@ sudo dd if=/dev/zero bs=1 count=0 seek=10G of=/data/disk3.img
 LOOP3=$(sudo losetup --find --show /data/disk3.img)
 SIZE3=$(sudo blockdev --getsz $LOOP3)
 echo "0 $SIZE3 linear $LOOP3 0" | sudo dmsetup create directpv-disk3
+
+# Make it persist across reboots (This is for 3, to change it change the for loop)
+sudo tee /etc/systemd/system/directpv-disks.service > /dev/null <<'EOF'
+[Unit]
+Description=Setup dm-linear devices for DirectPV
+After=local-fs.target
+Before=kubelet.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+ExecStart=/bin/bash -c 'for i in 1 2 3 ; do dmsetup info directpv-disk$i > /dev/null 2>&1 || (LOOP=$(losetup --find --show /data/disk$i.img) && SIZE=$(blockdev --getsz $LOOP) && echo "0 $SIZE linear $LOOP 0" | dmsetup create directpv-disk$i); done'
+
+ExecStop=/bin/bash -c 'for i in 1 2 3 ; do dmsetup remove directpv-disk$i 2>/dev/null; losetup -d $(losetup -j /data/disk$i.img | cut -d: -f1) 2>/dev/null; done'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable directpv-disks.service
+sudo systemctl start directpv-disks.service
+sudo systemctl status directpv-disks.service
 ```
 
 ```bash
-# Add MinIO repo
-helm repo add minio https://helm.min.io/
-helm repo update
-
-# Install DirectPV Plugin
-helm install directpv minio/directpv --namespace celery --create-namespace
-
-# Install local management CLI, required for DirectPV to format drives
-curl -L https://dl.min.io/aistor/directpv/release/linux-amd64/kubectl-directpv_5.1.0 -o kubectl-directpv
-chmod +x ./kubectl-directpv
-sudo mv ./kubectl-directpv /usr/local/bin/kubectl-directpv
+# Install krew from: https://krew.sigs.k8s.io/docs/user-guide/setup/install/
+kubectl krew install directpv
+kubectl directpv install
 
 # Scan for drives and initialize them
 kubectl directpv discover
@@ -99,9 +83,44 @@ kubectl directpv init drives.yaml
 
 # To see drives
 kubectl directpv list drives
+```
 
-# Create storage class
-kubectl apply -f kubernetes/storage/minio/minio_storage_class.yaml
+# Create certs for minio
+Minio requires certs in kubernetes pods. 
+Here the certs are managed with cert-manager pods.
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+
+# Wait for it to be ready
+kubectl get pods -n cert-manager -w
+
+# Once ready, create the pod
+kubectl apply -f kubernetes/storage/miniop/cert-issuer.yaml
+```
+
+- Get and validate the cert
+
+```bash
+# TODO: The minio does not currently use the generated certs and uses the kubernetes default certs
+# Get the default with:
+kubectl create secret generic minio-ca \
+  --from-file=ca.crt=/etc/kubernetes/pki/ca.crt \
+  -n celery --dry-run=client -o yaml | kubectl apply -f -
+# # You can check and save the cert with the following:
+# # Check the secret was created
+# kubectl get secret minio-tls -n celery -o yaml
+
+# # Extract the CA cert
+# kubectl get secret minio-tls -n celery \
+#   -o jsonpath='{.data.ca\.crt}' | base64 -d > minio-ca.crt
+
+# # Verify it looks correct
+# openssl x509 -in minio-ca.crt -text -noout | grep -E 'Issuer|Subject|DNS|IP'
+
+# # Create the secret
+# kubectl create secret generic minio-ca \
+#   --from-file=ca.crt=minio-ca.crt \
+#   -n celery
 ```
 
 # MinIO Setup
@@ -112,7 +131,7 @@ Log in to https://subnet.min.io and get a license for MinIO Aistor.
 # Add Helm repo
 helm repo add minio https://helm.min.io/
 helm repo add minio-operator https://operator.min.io
-help repo update
+helm repo update
 
 # Install aistor operator
 helm install aistor minio/aistor-operator \
@@ -129,4 +148,71 @@ After the operator is installed, apply the MinIO Tenant manifest:
 
 ```bash
 kubectl apply -f kubernetes/storage/minio/minio_storage.yaml
+```
+
+## Testing Minio
+After creating the pod, you can get the login with:
+
+ - `kubectl exec -it minio-pool-0-0 -n celery -c minio -- cat /tmp/minio/config.env`
+
+Then connect with the following steps:
+
+Connect to the console with `kubectl port-forward svc/minio-console 9443:9443 -n celery --address 0.0.0.0`.
+Then log in to the address (localhost or the vm ip address).
+
+Use the following for connecting:
+
+ - Endpoint: `http://minio.celery.svc.cluster.local:9000`
+ - Access Key: `MINIO_ROOT_USER`
+ - Secret Key: `MINIO_ROOT_PASSWORD`
+
+You can also test the connection with the following:
+```bash
+# Create test container and enter its bash
+kubectl run minio-test -n celery --rm -it \
+  --image=python:3.11-slim \
+  --restart=Never \
+  --overrides='{
+    "spec": {
+      "containers": [{
+        "name": "minio-test",
+        "image": "python:3.11-slim",
+        "stdin": true,
+        "tty": true,
+        "command": ["/bin/bash"],
+        "volumeMounts": [{
+          "name": "minio-ca",
+          "mountPath": "/etc/minio/certs"
+        }]
+      }],
+      "volumes": [{
+        "name": "minio-ca",
+        "secret": {
+          "secretName": "minio-ca"
+        }
+      }]
+    }
+  }'
+
+# Install minio and run script
+pip install minio
+
+python3 -c "
+import urllib3
+from minio import Minio
+
+client = Minio(
+    'minio.celery.svc.cluster.local:443',
+    access_key='your-access-key',
+    secret_key='your-secret-key',
+    secure=True,
+    http_client=urllib3.PoolManager(
+        ca_certs='/etc/minio/certs/ca.crt'
+    )
+)
+
+buckets = client.list_buckets()
+for bucket in buckets:
+    print(bucket.name)
+"
 ```

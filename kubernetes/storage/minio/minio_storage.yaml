@@ -1,7 +1,7 @@
 apiVersion: aistor.min.io/v1
 kind: ObjectStore
 metadata:
-  name: miniostorage
+  name: minio
   namespace: celery
   labels:
     app: minio
@@ -10,13 +10,13 @@ spec:
     - name: pool-0
       servers: 1
       volumesPerServer: 4
-      volumesClaimTemplate:
+      volumeClaimTemplate:
         metadata:
           name: data
         spec:
           accessModes:
             - ReadWriteOnce # Only one node has read/write access
-          storageClass: directpv-min-io
+          storageClassName: directpv-min-io
           resources:
             requests:
               storage: 2Gi # 2 Gibibytes
