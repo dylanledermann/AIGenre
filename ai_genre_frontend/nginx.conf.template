@@ -13,7 +13,8 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://spring-backend:8080/api/;
+        # Variable substitution
+        proxy_pass $BACKEND_URL/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -21,7 +22,7 @@ server {
 
     location /ws {
         # Forward pass to
-        proxy_pass http://spring-backend:8080/ws;
+        proxy_pass $BACKEND_URL/ws;
 
         # Enable websocket proxying
         proxy_http_version 1.1;

@@ -4,7 +4,7 @@ import { ws } from 'msw';
 
 // Default urls to use
 export const BASE_URL = config.api.baseUrl;
-export const WS_URL = config.api.websocketBaseUrl;
+export const WS_URL = `${config.api.protocol}://${window.location.host}${config.api.websocketBaseUrl}`;
 
 // setup server for testing
 export const server = setupServer();

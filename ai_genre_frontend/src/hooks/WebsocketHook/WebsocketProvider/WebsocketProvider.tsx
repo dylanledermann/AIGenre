@@ -55,7 +55,7 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!exists) {
         const client = new Client({
-          webSocketFactory: () => new WebSocket(config.api.websocketBaseUrl),
+          webSocketFactory: () => new WebSocket(`${config.api.protocol}://${window.location.host}${config.api.websocketBaseUrl}`),
 
           onConnect: () => {
             // update state for the task to pending (connection was made)
