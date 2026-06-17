@@ -46,3 +46,4 @@ spring:
             channels:
                 grpc-server:
                     address: ${GRPC_HOST}
+                    default-load-balancing-policy: round_robin
