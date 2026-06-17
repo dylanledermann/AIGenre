@@ -19,6 +19,9 @@ spec:
       containers:
       - name: celery
         image: dylhead/ai-genre-celery-cpu # remove cpu if using gpu
+        env:
+          - name: NUMBA_CACHE_DIR
+            value: /tmp/numba_cache
         envFrom:
         - secretRef:
             name: celery

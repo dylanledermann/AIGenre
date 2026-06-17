@@ -48,13 +48,26 @@ Make sure to edit the name of the secrets for each deployment (they inject the s
 # Testing
 The architecture was testing using Multipass with Hyper-V.
 This was mostly done following [Omer Sezer's](https://github.com/omerbsezer/Fast-Kubernetes/blob/main/K8s-Kubeadm-Cluster-Setup.md) guide.
+*If you have an issue with number if files open or watched, you can adjust the size with the following:
+```bash
+# Check the current number of watches and instances
+cat /proc/sys/fs/inotify/max_user_instances
+cat /proc/sys/fs/inotify/max_user_watches
+
+# Increase the watches and instances
+echo "fs.inotify.max_user_watches=524288
+fs.inotify.max_user_instances=1024" | sudo tee -a /etc/sysctl.conf
+
+# Apply the changes
+sudo sysctl -p
+```
 ## Cluster Setup
 ### Set Up Multipass containers
 ```bash
 # Create the nodes
 multipass launch -n <container-name> -c <number-of-cores> -m <memory> -d <disk-size>
 # Example with 2 cores, 2 gigabytes of memory, and 10 gigabytes of disk space
-multipass launch -n master -c 4 -m 8G -m 80G
+multipass launch -n master -c 4 -m 8G -d 80G
 ```
 ### Enter Multipass container shell
 ```bash
@@ -258,7 +271,7 @@ helm upgrade --install cnpg --namespace backend --create-namespace --set config.
 ```bash
 kubectl krew install directpv
 kubectl directpv install
-# MinIO requires 3+ drives
+# MinIO requires 3+ unused/not partitioned drives
 kubectl directpv discover
 kubectl directpv init drives.yaml
 helm install aistor minio/aistor-operator -n celery --create-namespace --set license="<license>" -f kubernetes/storage/minio/minio_config.yaml
@@ -328,7 +341,7 @@ The steps to add a gateway are the following:
 kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml
 
 # Add nginx fabric CRDs
-kubectl kustomize https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard | kubectl apply -f -
+kubectl kustomize https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard | kubectl create -f -
 
 # Install the nginx helm chart from OCI Registry and wait for 
 helm install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric --create-namespace -n nginx-gateway
@@ -351,8 +364,16 @@ helm install metallb metallb/metallb \
         --wait
 
 # Apply metallb config to create container (Adjust manifest to match the node ip range)
-kubectl apply -f AIGenre/kubernetes/metallb_config.yaml
+kubectl apply -f kubernetes/metallb_config.yaml
 
 # Port forward from the multipass vm to host machine (access with vm ip address)
 kubectl port-forward -n backend service/main-gateway-nginx 8080:80 --address 0.0.0.0
 ```
+#### Final Note
+The following manifests need to be adjusted:
+ - kubernetes/metallb_config.yaml - The spec.addresses[] is specific to the machine IP
+ - kubernetes/ai_genre_frontend/ingress.yaml - All the HTTPRoute spec.hostnames[] and spec.rules.filters.cors.allowOrigin is specific to the machine IP.
+
+Master nodes have no-schedule for all except kube-system, which you need to remove before adding pods to the master node(s).
+
+Check the manifests for possible .env they use. I currently have grpc and celery worker using the same .env files.

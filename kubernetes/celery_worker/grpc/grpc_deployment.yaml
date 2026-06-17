@@ -39,3 +39,10 @@ spec:
         envFrom:
         - secretRef:
             name: celery # Uses the same .env as the celery worker, should be changed in prod to only know rabbitmq connection.
+        volumeMounts:
+          - name: minio-ca
+            mountPath: /etc/minio/certs
+      volumes:
+        - name: minio-ca
+          secret:
+            secretName: minio-ca

@@ -92,7 +92,7 @@ Here the certs are managed with cert-manager pods.
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 
 # Wait for it to be ready
-kubectl get pods -n cert-manager -w
+kubectl wait --timeout=5m -n cert-manager deployment/cert-manager --for=condition=Available
 
 # Once ready, create the pod
 kubectl apply -f kubernetes/storage/minio/cert-issuer.yaml
