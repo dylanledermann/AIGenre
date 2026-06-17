@@ -19,6 +19,8 @@ spec:
     kind: Issuer
   commonName: minio.celery.svc.cluster.local
   dnsNames:
+    - minio.celery
+    - minio.celery.svc
     - minio.celery.svc.cluster.local
     - minio-hl.celery.svc.cluster.local
     - "*.celery.svc.cluster.local"

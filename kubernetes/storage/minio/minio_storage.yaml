@@ -6,6 +6,11 @@ metadata:
   labels:
     app: minio
 spec:
+  certificates:
+    disableAutoCert: true
+    server:
+    - name: minio-tls
+      type: cert-manager.io/v1
   pools:
     - name: pool-0
       servers: 1

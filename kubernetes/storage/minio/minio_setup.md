@@ -95,32 +95,28 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/do
 kubectl get pods -n cert-manager -w
 
 # Once ready, create the pod
-kubectl apply -f kubernetes/storage/miniop/cert-issuer.yaml
+kubectl apply -f kubernetes/storage/minio/cert-issuer.yaml
 ```
 
 - Get and validate the cert
 
 ```bash
-# TODO: The minio does not currently use the generated certs and uses the kubernetes default certs
-# Get the default with:
+# You can check and save the cert with the following:
+
+# Check the secret was created
+kubectl get secret minio-tls -n celery -o yaml
+
+# Extract the CA cert
+kubectl get secret minio-tls -n celery \
+  -o jsonpath='{.data.ca\.crt}' | base64 -d > minio-ca.crt
+
+# Verify it looks correct
+openssl x509 -in minio-ca.crt -text -noout | grep -E 'Issuer|Subject|DNS|IP'
+
+# Create the secret
 kubectl create secret generic minio-ca \
-  --from-file=ca.crt=/etc/kubernetes/pki/ca.crt \
-  -n celery --dry-run=client -o yaml | kubectl apply -f -
-# # You can check and save the cert with the following:
-# # Check the secret was created
-# kubectl get secret minio-tls -n celery -o yaml
-
-# # Extract the CA cert
-# kubectl get secret minio-tls -n celery \
-#   -o jsonpath='{.data.ca\.crt}' | base64 -d > minio-ca.crt
-
-# # Verify it looks correct
-# openssl x509 -in minio-ca.crt -text -noout | grep -E 'Issuer|Subject|DNS|IP'
-
-# # Create the secret
-# kubectl create secret generic minio-ca \
-#   --from-file=ca.crt=minio-ca.crt \
-#   -n celery
+  --from-file=ca.crt=minio-ca.crt \
+  -n celery
 ```
 
 # MinIO Setup
@@ -194,6 +190,7 @@ kubectl run minio-test -n celery --rm -it \
     }
   }'
 
+# In the pod:
 # Install minio and run script
 pip install minio
 
