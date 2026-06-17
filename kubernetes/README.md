@@ -54,7 +54,7 @@ This was mostly done following [Omer Sezer's](https://github.com/omerbsezer/Fast
 # Create the nodes
 multipass launch -n <container-name> -c <number-of-cores> -m <memory> -d <disk-size>
 # Example with 2 cores, 2 gigabytes of memory, and 10 gigabytes of disk space
-multipass launch -n master -c 4 -m 2G -m 80G
+multipass launch -n master -c 4 -m 8G -m 80G
 ```
 ### Enter Multipass container shell
 ```bash
@@ -311,4 +311,48 @@ sudo systemctl start docker
 sudo systemctl enable docker
 sudo usermod -aG docker $USER
 newgrp docker
+```
+
+##### Gateway
+The gateway splits the previous nginx ingress into different resources.
+
+- The GatewayClass defines a set of gateways with common configs managed by a controller that implements the class.
+
+- The Gateway, which defines an instance of traffic handling infrastructure (e.g. load balance).
+
+- The HTTPRoute defines HTTP-specific rules for mapping traffic from a Gateway listener to endpoints.
+
+The steps to add a gateway are the following:
+```bash
+# Install the Gateway API CRDs
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml
+
+# Add nginx fabric CRDs
+kubectl kustomize https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard | kubectl apply -f -
+
+# Install the nginx helm chart from OCI Registry and wait for 
+helm install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric --create-namespace -n nginx-gateway
+kubectl wait --timeout=5m -n nginx-gateway deployment/ngf-nginx-gateway-fabric --for=condition=Available
+
+# View the gateway
+kubectl get gatewayclass
+
+# Create HTTPRoutes (created in backend namespace despite being in frontend folder)
+kubectl apply -f kubernetes/ai_genre_frontend/ingress.yaml
+
+# Add MetalLB repo to helm
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+
+# Install MetalLB
+helm install metallb metallb/metallb \
+        --namespace metallb-system \
+        --create-namespace \
+        --wait
+
+# Apply metallb config to create container (Adjust manifest to match the node ip range)
+kubectl apply -f AIGenre/kubernetes/metallb_config.yaml
+
+# Port forward from the multipass vm to host machine (access with vm ip address)
+kubectl port-forward -n backend service/main-gateway-nginx 8080:80 --address 0.0.0.0
 ```

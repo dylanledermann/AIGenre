@@ -5,13 +5,14 @@ metadata:
   name: grpc
   namespace: celery
 spec:
-  type: ClusterIP
+  clusterIP: None # Headless service to load balance GRPC server and prevents only 1 IP address
   selector:
     app: grpc
   ports:
   - protocol: TCP
     port: 50051
     targetPort: 50051
+    appProtocol: grpc
 --- # gRPC Server
 apiVersion: apps/v1
 kind: Deployment
