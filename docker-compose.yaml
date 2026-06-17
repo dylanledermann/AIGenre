@@ -122,6 +122,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - BACKEND_URL: http://spring-backend:8080
     depends_on:
       spring-backend: 
         condition: service_started

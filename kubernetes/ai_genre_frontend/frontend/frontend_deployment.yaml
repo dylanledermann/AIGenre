@@ -33,9 +33,11 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: <frontend-image>
+        image: dylhead/ai-genre-frontend
         ports:
         - containerPort: 80
-        envFrom:
-        - secretRef:
-            name: <secret-name>
+        env:
+          - name: VITE_API_WEBSOCKET_PROTOCOL
+            value: "wss"
+          - name: BACKEND_URL # nginx injects env vars for the backend url. Here it points to the gateway
+            value: "http://backend.backend.svc.cluster.local:8080"

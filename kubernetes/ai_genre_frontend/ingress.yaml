@@ -1,41 +1,114 @@
-# Frontend Gateway Class
-apiVersion: gateway.networking.k8s.io/v1
-kind: GatewayClass
-metadata:
-  name: frontendgatewayclass
-spec:
-  controllerName: example.com/gateway-controller
---- # Frontend Gateway
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: frontendgateway
-  namespace: frontend
+  name: main-gateway
+  namespace: backend
 spec:
-  gatewayClassName: frontendgatewayclass
+  gatewayClassName: nginx # Must match GatewayClass
   listeners:
-  - name: http
-    port: 80
-    protocol: HTTP
-    allowedRoutes:
-      namespaces:
-        from: same
---- # Frontend HTTPRoute
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# backend route
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: frontendhttproute
-  namespace: frontend
+  name: api-route
+  namespace: backend
 spec:
   parentRefs:
-  - name: frontendgateway
+    - name: main-gateway
   hostnames:
-  - example.com
+    - "172.28.70.76"
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: frontend
-      port: 80
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /api
+      filters:
+        - type: CORS
+          cors:
+            allowOrigins:
+              - "http://172.28.70.76:8080" # Change to whatever the frontend location is
+            allowMethods:
+              - POST
+            allowHeaders:
+              - content-type
+              - authorization
+      backendRefs:
+        - name: backend
+          namespace: backend
+          port: 8080
+---
+# websocket route
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ws-route
+  namespace: backend
+  annotations:
+    nginx.org/websocket-service: backend # Upgrades connection to HTTP/2 for websockets
+    nginx.org/proxy-read-timeout: "3600" # gives 1 minute connection timeout
+spec:
+  parentRefs:
+    - name: main-gateway
+  hostnames:
+    - "172.28.70.76"
+  rules:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /ws
+      filters:
+        - type: CORS
+          cors:
+            allowOrigins:
+              - "http://172.28.70.76:8080" # Change to whatever the frontend location is
+            allowMethods:
+              - POST
+            allowHeaders:
+              - content-type
+              - authorization
+      backendRefs:
+        - name: backend
+          namespace: backend
+          port: 8080
+---
+# Frontend route Reference Grant
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: routing-to-frontend
+  namespace: frontend
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: backend
+  to:
+    - group: "" # Core API group for Services
+      kind: Service
+      name: frontend
+---
+# frontend route
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: frontend-route
+  namespace: backend
+spec:
+  parentRefs:
+    - name: main-gateway
+  rules:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /
+      backendRefs:
+        - name: frontend
+          namespace: frontend
+          port: 80
