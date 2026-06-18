@@ -23,7 +23,7 @@ spec:
   parentRefs:
     - name: main-gateway
   hostnames:
-    - "172.22.171.153"
+    - "172.17.36.163"
   rules:
     - matches:
       - path:
@@ -33,7 +33,7 @@ spec:
         - type: CORS
           cors:
             allowOrigins:
-              - "http://172.22.171.153:8080" # Change to whatever the frontend location is
+              - "http://172.17.36.163:8080" # Change to whatever the frontend location is
             allowMethods:
               - POST
             allowHeaders:
@@ -57,7 +57,7 @@ spec:
   parentRefs:
     - name: main-gateway
   hostnames:
-    - "172.22.171.153"
+    - "172.17.36.163"
   rules:
     - matches:
       - path:
@@ -67,7 +67,7 @@ spec:
         - type: CORS
           cors:
             allowOrigins:
-              - "http://172.22.171.153:8080" # Change to whatever the frontend location is
+              - "http://172.17.36.163:8080" # Change to whatever the frontend location is
             allowMethods:
               - POST
             allowHeaders:
@@ -104,7 +104,7 @@ spec:
   parentRefs:
     - name: main-gateway
   hostnames:
-    - "172.22.171.153"
+    - "172.17.36.163"
   rules:
     - matches:
       - path:

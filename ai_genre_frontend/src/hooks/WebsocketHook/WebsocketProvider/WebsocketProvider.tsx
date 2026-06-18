@@ -27,6 +27,16 @@ const WebsocketProvider = ({ children }: { children: React.ReactNode }) => {
     setConnections((prev) => {
       const next = new Map(prev);
       const current = next.get(taskId) ?? defaultState();
+      console.log(current);
+      // Need to reset error/message if different values
+      // This is for the case where something fails/passes, then the patch changes
+      // E.g. The socket disconnects (error value) then reconnects with completion (results value)
+      if (patch.status != WebsocketStatuses.FAILED) {
+        current.error = null;
+      }
+      if (patch.status != WebsocketStatuses.COMPLETE) {
+        current.results = null;
+      }
       next.set(taskId, { ...current, ...patch });
       return next;
     });
