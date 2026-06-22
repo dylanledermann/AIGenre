@@ -1,5 +1,6 @@
 package dylanlederman.ai_genre.controllers;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -59,7 +60,13 @@ public class QueryController {
         Optional<ResultModel> savedRes = queryService.checkHash(fileHash);
         // Send task with complete status if already created
         if (savedRes.isPresent()) {
-            return ResponseEntity.ok(savedRes.get());
+            ResultModel res = savedRes.get();
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("taskId", res.taskId());
+            payload.put("status", res.status());
+            if (res instanceof ResultModel.Complete) payload.put("results", ((ResultModel.Complete) res).result());
+            if (res instanceof ResultModel.Failed) payload.put("error", ((ResultModel.Failed) res).error());
+            return ResponseEntity.ok(payload);
         }
 
         // Save file to db
