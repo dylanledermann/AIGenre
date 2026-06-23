@@ -47,7 +47,15 @@ spring:
                 grpc-server:
                     address: ${GRPC_HOST}
                     default-load-balancing-policy: round_robin
-    endpoints:
-        web:
-            exposure:
-                include=health,prometheus
+# Metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    enable:
+      all: true

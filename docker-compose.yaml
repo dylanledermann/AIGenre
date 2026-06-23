@@ -3,6 +3,7 @@ services:
   postgres-db:
     image: postgres:16-alpine
     env_file: ./ai-genre/.env
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -13,6 +14,22 @@ services:
       start_period: 10s
     networks:
       - backend-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    ports:
+      - 9187:9187
+    environment:
+      - DATA_SOURCE_URI=postgres-db:5432
+    env_file: ./ai-genre/.env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      spring-backend:
+        condition: service_started
+    networks:
+      - backend-network
+
 
   redis-cache:
     image: redis:7
@@ -39,6 +56,18 @@ services:
       start_period: 10s
     networks:
       - backend-network
+      
+  redis-exporter:
+    image: oliver006/redis_exporter
+    ports:
+      - 9121:9121
+    depends_on:
+      redis-broker:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - backend-network
   
   spring-backend:
     image: dylhead/ai-genre-spring
@@ -59,8 +88,8 @@ services:
   celery-broker:
     image: rabbitmq:3-management
     volumes: 
+      - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
       - celery-broker:/data
-    restart: always
     healthcheck:
       test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping && rabbitmq-diagnostics check_port_connectivity"]
       interval: 30s
@@ -133,14 +162,15 @@ services:
   # Grafana/Prometheus containers
   prometheus-server:
     image: prom/prometheus
-    environment:
-      - BACKEND_HOSTS='spring-backend:8080'
     volumes:
-      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - ./prometheus.template.yaml:/etc/prometheus/prometheus.template.yaml
       - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yaml'
-      - '--storage.tsdb.path=/prometheus'
+    entrypoint: 
+      - /bin/sh 
+      - -c 
+      - | 
+        sed "s|\$${BACKEND_HOSTS}|$${BACKEND_HOSTS}|g" < /etc/prometheus/prometheus.template.yaml > /etc/prometheus/prometheus.yml
+        exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
     ports:
       - 9090:9090
     healthcheck:

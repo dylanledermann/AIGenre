@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
 CREATE TABLE uploads (
     file_hash CHAR(64) PRIMARY KEY,
     file_metadata JSONB,
