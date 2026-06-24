@@ -33,3 +33,7 @@ The ResNet model was able to achieve over 70% with and without lyrics. The trans
 
 # Website
 The website was created using SpringBoot for the backend (./ai-genre), React for the frontend (./ai_genre_frontend), and a Celery worker with a FastAPI entrypoint(celery_worker). Each service has its own README.md file that indicates how to run each. The main directory also has a docker-compose.yaml file that starts up a container for each service to run.
+
+The website includes the file uploading as well as metrics:
+
+[![Metrics Image](metrics.png)]

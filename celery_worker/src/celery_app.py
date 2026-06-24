@@ -23,7 +23,8 @@ celery_app.conf.update(
     task_time_limit=3600, # 1 hour
     worker_prefetch_multiplier=1, # Parallel tasks
     worker_max_tasks_per_child=50, # Number of tasks before restarting worker (prevents memory leak)
-    task_acks_late=True
+    task_acks_late=True,
+    worker_send_task_events=True # Send task events for metrics
 )
 
 @worker_process_init.connect

@@ -20,7 +20,7 @@ services:
     ports:
       - 9187:9187
     environment:
-      - DATA_SOURCE_URI=postgres-db:5432
+      - DATA_SOURCE_URI=postgres-db:5432/genre_db?sslmode=disable
     env_file: ./ai-genre/.env
     depends_on:
       postgres-db:
@@ -135,6 +135,15 @@ services:
       - worker-network
       - backend-network
   
+  celery-exporter:
+    image: ovalmoney/celery-exporter
+    env_file: ./celery_worker/.env
+    depends_on:
+      celery-worker:
+        condition: service_started
+    networks:
+      - worker-network
+
   grpc-server:
     image: dylhead/ai-genre-grpc
     env_file: ./celery_worker/.env

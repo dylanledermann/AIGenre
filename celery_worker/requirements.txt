@@ -4,6 +4,8 @@ testcontainers[rabbitmq]
 testcontainers[minio]
 grpcio
 grpcio-tools
+py-grpc-prometheus
+prometheus_client
 protobuf
 psycopg
 psycopg-binary
